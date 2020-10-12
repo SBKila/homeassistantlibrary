@@ -17,6 +17,7 @@ namespace HALIB_NAMESPACE
     public:
         HADevice(const char *pDeviceName, const char *pManuf = NULL, const char *pModel = NULL, const char *pRelease = NULL)
         {
+            mWifi = &WiFi;
             m_pNode = new HANode(pDeviceName);
             m_pNode->setDeviceInfo(pManuf, pModel, pRelease);
             m_openHabMqttUrl = NULL;
@@ -49,12 +50,12 @@ namespace HALIB_NAMESPACE
             m_pNode->addComponent(p_pComponent);
         }
 
-        void loop()
+        void loop(wl_status_t wifiStatus)
         {
-            wl_status_t status = WiFi.status();
-            if (status == WL_CONNECTED)
+            //wl_status_t status = mWifi->status();
+            if (wifiStatus == WL_CONNECTED)
             { // assigned when wifi connection is established
-
+                //DEBUG_PRINTLN("=> Wifi connected");
                 if (m_PreviousWifiStatus != WL_CONNECTED)
                 {   // wifi just connected
                     // DEBUG_PRINTLN("wifi just connected");
@@ -63,10 +64,11 @@ namespace HALIB_NAMESPACE
                 { // wifi connected
                     if (!m_MqttClient.connected())
                     { // mqtt not connected
-                        m_MqttClient.loop();
-                        DEBUG_PRINTLN("openhab mqtt not connected");
+                        //DEBUG_PRINTLN("=> mqtt not connected");
+                        //m_MqttClient.loop();
                         if (connectMQTTServer())
                         {
+                            //DEBUG_PRINTLN("=> mqtt now connected");
                             m_pNode->postAutoDiscovery();
                             while (treatActions())
                                 ;
@@ -80,13 +82,16 @@ namespace HALIB_NAMESPACE
                     }
                     else
                     { // mqtt still connected
-                        m_MqttClient.loop();
+                        //DEBUG_PRINTLN("=> mqtt connected");
+                        //m_MqttClient.loop();
                         treatOutbox();
                         treatActions();
                     }
+
+                    m_MqttClient.loop();
                 }
             }
-            m_PreviousWifiStatus = status;
+            m_PreviousWifiStatus = wifiStatus;
         };
         HANode *getNode()
         {
@@ -101,6 +106,7 @@ namespace HALIB_NAMESPACE
         HANode *m_pNode;
         wl_status_t m_PreviousWifiStatus = WL_DISCONNECTED;
         wl_status_t m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
+        ESP8266WiFiClass *mWifi = & WiFi;
 
         void onMQTTMessage(char *topic, unsigned char *payload, unsigned int length)
         {
@@ -112,38 +118,38 @@ namespace HALIB_NAMESPACE
             uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
             const char *nodeName = m_pNode->getName();
 
-            DEBUG_PRINTLN("openhab mqtt connecting with :");
+            //DEBUG_PRINTLN("mqtt connecting with :");
             // <node_name>-identifier
             int deviceIdLength = strlen(nodeName) + 1 + 8 + 1;
             char *deviceId = (char *)calloc(deviceIdLength, sizeof(char));
             // apply template
             sprintf_P(deviceId, DEVICEIDENTIFIER_TEMPALTE, nodeName, identifier);
-            DEBUG_PRINT("deviceId:");
-            DEBUG_PRINT(deviceId);
-            DEBUG_PRINTLN("");
+            //DEBUG_PRINT("deviceId:");
+            //DEBUG_PRINT(deviceId);
+            //DEBUG_PRINTLN("");
 
             const char *willTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
             ;
             uint8_t willQos = 0;
             boolean willRetain = true;
             const char *willMessage = m_pNode->getProperty(PROP_PAYLOAD_NOT_AVAILABLE);
-            DEBUG_PRINT("willTopic:");
-            DEBUG_PRINT(willTopic);
-            DEBUG_PRINTLN("");
-            DEBUG_PRINT("willQos:");
-            DEBUG_PRINTLN_DEC(willQos);
-            DEBUG_PRINT("willRetain:");
-            DEBUG_PRINT(willRetain ? "TRUE" : "FALSE");
-            DEBUG_PRINTLN("");
-            DEBUG_PRINT("willMessage:");
-            DEBUG_PRINT(willMessage);
-            DEBUG_PRINTLN("");
+            // DEBUG_PRINT("willTopic:");
+            // DEBUG_PRINT(willTopic);
+            // DEBUG_PRINTLN("");
+            // DEBUG_PRINT("willQos:");
+            // DEBUG_PRINTLN_DEC(willQos);
+            // DEBUG_PRINT("willRetain:");
+            // DEBUG_PRINT(willRetain ? "TRUE" : "FALSE");
+            // DEBUG_PRINTLN("");
+            // DEBUG_PRINT("willMessage:");
+            // DEBUG_PRINT(willMessage);
+            // DEBUG_PRINTLN("");
 
             bool status = m_MqttClient.connect(deviceId, willTopic, willQos, willRetain, willMessage);
             //@todo login/password will message
 
-            DEBUG_PRINT(" mqtt connection status = ");
-            DEBUG_PRINTLN(status);
+            // DEBUG_PRINT(" mqtt connection status = ");
+            // DEBUG_PRINTLN(status);
 
             free(deviceId);
 
@@ -151,12 +157,12 @@ namespace HALIB_NAMESPACE
         }
         bool treatOutbox()
         {
-            //DEBUG_PRINTLN("Message loop");
+            DEBUG_PRINTLN("treatOutbox");
             HAMessage *message = m_pNode->pickupOutboxMessage();
 
             if (NULL != message)
             {
-                //DEBUG_PRINTLN("Message available");
+                // DEBUG_PRINTLN("Message available");
 
                 const char *offset = message->getMessage();
                 size_t messageLength = strlen(offset);
@@ -168,7 +174,7 @@ namespace HALIB_NAMESPACE
                     // DEBUG_PRINTLN("Long Message");
                     success = m_MqttClient.beginPublish(message->getTopic(), messageLength, 0);
                     // DEBUG_PRINTLN("starting");
-                    // DEBUG_PRINTLN_DEC(messageLength);
+                    //DEBUG_PRINTLN_DEC(messageLength);
                     while (success && (0 != messageLength))
                     {
                         int sentdata = 0;
@@ -199,7 +205,7 @@ namespace HALIB_NAMESPACE
                 }
                 else
                 {
-                    DEBUG_PRINTLN("Message not sent");
+                    // DEBUG_PRINTLN("Message not sent");
                     m_pNode->postMessage(message);
                 }
 
@@ -212,7 +218,7 @@ namespace HALIB_NAMESPACE
         }
         bool treatActions()
         {
-            //DEBUG_PRINTLN("Send Subscription");
+            DEBUG_PRINTLN("treatActions");
             HASubscribCmd *l_pCmd = m_pNode->pickupOutboxAction();
             if (NULL != l_pCmd)
             {
@@ -244,7 +250,7 @@ namespace HALIB_NAMESPACE
             // DEBUG_PRINT("Message:");DEBUG_PRINT(availabilityMessage);DEBUG_PRINTLN("");
             // DEBUG_PRINTLN_DEC(MQTT_MAX_PACKET_SIZE);
             m_MqttClient.publish(availabilityTopic, availabilityMessage, true);
-            DEBUG_PRINTLN("Availability sent");
+            // DEBUG_PRINTLN("Availability sent");
             return true;
         }
 

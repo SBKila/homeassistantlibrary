@@ -375,8 +375,6 @@ void UT_OnHAMessage(void)
 {
     uint32_t freeBefore = ESP.getFreeHeap();
 
-    
-
     HANode *pNode = new HANode("portal");
 
     HAComponent *pHAComponent3 = new HAComponentLigthBasic("DEVICE3", [](boolean powerOn) { callbackCalled++; });
@@ -393,9 +391,9 @@ void UT_OnHAMessage(void)
     strcpy(mqttTopic, c3Root);
     strcat(mqttTopic, c3Act + 1);
     //TEST_MESSAGE(mqttTopic);
-    TEST_ASSERT_TRUE_MESSAGE(pNode->onHAMessage(mqttTopic, (const byte*)"ON", ((const unsigned int)2)),"action topic do not work");
+    TEST_ASSERT_TRUE_MESSAGE(pNode->onHAMessage(mqttTopic, (const byte *)"ON", ((const unsigned int)2)), "action topic do not work");
     delete mqttTopic;
-    TEST_ASSERT_FALSE(pNode->onHAMessage("ezr/zer/zer", (const byte*)"ON", ((const unsigned int)2)));
+    TEST_ASSERT_FALSE(pNode->onHAMessage("ezr/zer/zer", (const byte *)"ON", ((const unsigned int)2)));
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, callbackCalled, "Only 1 callback should ben called");
 
     delete pHAComponent3;
@@ -404,7 +402,6 @@ void UT_OnHAMessage(void)
     uint32_t freeAfter = ESP.getFreeHeap();
     TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
 }
-
 
 void UT_HAAdapter_constructor(void)
 {
@@ -463,8 +460,270 @@ void UC_SETUP(void)
 
 void UC_WIFICOnnect()
 {
+
 }
 
+byte CONNECTACKOK[4] = { 32,2,2,0 };
+byte SUBACKOK[5] = { 144,3,0,0,0};
+
+class mockClient : public Client
+{
+
+    byte *readBuffer = NULL;
+    uint readBuffSize = 0;
+    byte *writeBuffer = NULL;
+    uint writeBuffSize = 0;
+    uint currentWriteIndex = 0;
+    uint currentReadIndex = 0;
+    uint isConnected = 0;
+
+public:
+    void setReadBuffer(byte *pBuff, uint pBuffSize)
+    {
+        readBuffer = pBuff;
+        readBuffSize = pBuffSize;
+        currentReadIndex = 0;
+    }
+    void setWriteBuffer(byte *pBuff, uint pBuffSize)
+    {
+        writeBuffer = pBuff;
+        writeBuffSize = pBuffSize;
+        currentWriteIndex = 0;
+    }
+
+    virtual int connect(IPAddress ip, uint16_t port)
+    {
+        Serial.println("Wifi connect ip ");
+        isConnected = (uint)1;
+        return 1;
+    }
+    virtual int connect(const char *host, uint16_t port)
+    {
+        Serial.println("Wifi connect host");
+        isConnected = 1;
+        return 1;
+    }
+    virtual size_t write(uint8_t data)
+    {
+        Serial.print("Wifi Write ");
+        Serial.println((char)data);
+        if (currentWriteIndex < writeBuffSize)
+        {
+            writeBuffer[currentWriteIndex++] = (char)data;
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    virtual size_t write(const uint8_t *buf, size_t size) override
+    {
+        Serial.print("Wifi Write (");
+        Serial.print(size);
+        Serial.println(")");
+
+        byte MQTTControlPacketType = *buf;
+        MQTTControlPacketType = MQTTControlPacketType >> 4;
+        int qos = ((*buf) & 0x6) >> 1;
+
+        if (MQTTControlPacketType == 3)
+        {
+            size_t offset = 2;
+            Serial.print(" PUBLISH ");
+            size_t topicSize = *(buf + offset++);
+            topicSize = topicSize << 4;
+            topicSize += *(buf + offset++);
+            Serial.print("topic: ");
+            for (size_t index = 0; index < topicSize; index++)
+            {
+                Serial.print(*((char *)(buf + offset++)));
+            }
+            if (qos != 0)
+            {
+                Serial.print(" Packet Identifier: ");
+                topicSize = *(buf + offset++);
+                topicSize = topicSize << 4;
+                topicSize += *(buf + offset++);
+                Serial.print(topicSize);
+            }
+            Serial.print(" message: ");
+            for (; offset < size; offset++)
+            {
+                Serial.print(*((char *)(buf + offset)));
+            }
+            Serial.println();
+            
+        }
+        else if (MQTTControlPacketType == 8)
+        {
+            Serial.print(" SUBSCRIBE ");
+
+            int packetId = ( (*(buf + 2)) << 4 ) + *(buf + 3);
+            SUBACKOK[2]=*(buf + 2);
+            SUBACKOK[3]=*(buf + 3);
+
+            Serial.print(" paketid : ");
+            Serial.print(packetId);
+
+            Serial.print(" topic : ");
+            int offset = 4;
+            int topicSize = ((*(buf + offset++)) << 4) + *(buf + offset++);
+
+            for (int index = 0; index < topicSize; index++)
+            {
+                Serial.print(*((char *)(buf + offset++)));
+            }
+
+            Serial.print(" qos : ");
+            Serial.print(*(buf + offset));
+
+            setReadBuffer(SUBACKOK,5);
+        }
+        else if (MQTTControlPacketType == 1)
+        {
+            Serial.print(" CONNECT ");
+
+            for (size_t index = 0; index < 12; index++)
+            {
+
+                if (index < 4 || index > 8)
+                {
+                    Serial.print("(");
+                    Serial.print(*(buf + index));
+                    Serial.print(")");
+                }
+                else
+                {
+                    Serial.print(*((char *)(buf + index)));
+                }
+            }
+            for (size_t index = 12; index < size; index++)
+            {
+                Serial.print(" | ");
+                size_t dataSize = (*(buf + index++) << 4);
+                dataSize += *(buf + index++);
+                size_t dataEnd = index + dataSize;
+                for (; (index < dataEnd) && (index < size); index++)
+                {
+                    Serial.print(*((char *)(buf + index)));
+                }
+                index--;
+            }
+
+            Serial.println("");
+
+            setReadBuffer(CONNECTACKOK,4);
+        }
+        else
+        {
+            for (size_t index = 0; index < size; index++)
+            {
+                Serial.print(*((char *)(buf + index)));
+            }
+        }
+
+        if (currentWriteIndex + size < writeBuffSize)
+        {
+            memcpy(writeBuffer + currentWriteIndex, buf, size);
+            currentWriteIndex += size;
+            return size;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    virtual int available()
+    {
+        //Serial.print("Wifi available ");
+        //Serial.print(currentReadIndex!=(readBuffSize));
+        return currentReadIndex != (readBuffSize);
+    }
+    virtual int read()
+    {
+        //Serial.println("Wifi read");
+        return readBuffer[currentReadIndex++];
+    }
+    virtual int read(uint8_t *buf, size_t size)
+    {
+        Serial.println("Wifi Read buf");
+        return 0;
+    }
+    virtual int peek()
+    {
+        Serial.println("Wifi peek");
+        return 1;
+    }
+    virtual void flush()
+    {
+        Serial.println("Wifi flush");
+        return;
+    }
+    virtual void stop()
+    {
+        Serial.println("Wifi stop");
+        return;
+    }
+    virtual uint8_t connected()
+    {
+        // Serial.println("Wifi connected");
+        return isConnected;
+    }
+    virtual operator bool()
+    {
+        return true;
+    }
+};
+void UC_UpStreamHAMessage(void)
+{
+    // WiFi.begin("perdigole", "Les filles sont belles");
+
+    // while (WiFi.status()!= WL_CONNECTED)
+    // {
+    //      delay(10000);
+    // }
+
+    byte *wifiInputBuffer = (byte*)malloc(10);
+    byte *wifiOutputBuffer = (byte*)malloc(512);
+    mockClient espClient;
+    uint32_t freeBefore = ESP.getFreeHeap();
+
+    espClient.setWriteBuffer(wifiOutputBuffer, 512);
+
+    HADevice *p_MyDevice = new HADevice("portal");
+    p_MyDevice->setup(espClient, "localhost", 8383);
+
+    HAAdapterPushBtn *p_Adapter = new HAAdapterPushBtn("MyButton", A0);
+    p_Adapter->setup();
+    p_Adapter->setDevice(p_MyDevice);
+
+    p_MyDevice->loop(WL_CONNECTED);
+    p_MyDevice->loop(WL_CONNECTED);
+    p_Adapter->loop();
+
+    TEST_MESSAGE("BTNPressed");
+    espClient.setWriteBuffer(wifiOutputBuffer, 512);
+    p_Adapter->onBtPressed();
+
+    TEST_MESSAGE("LOOP");
+    espClient.setWriteBuffer(wifiOutputBuffer, 512);
+    p_MyDevice->loop(WL_CONNECTED);
+    p_Adapter->loop();
+
+    TEST_MESSAGE("LOOP");
+    espClient.setWriteBuffer(wifiOutputBuffer, 512);
+    p_MyDevice->loop(WL_CONNECTED);
+    p_Adapter->loop();
+
+    delete (p_Adapter);
+    delete (p_MyDevice);
+
+    uint32_t freeAfter = ESP.getFreeHeap();
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
+    free(wifiInputBuffer);
+    free(wifiOutputBuffer);
+}
 void UC_OnHAMessage(void)
 {
     WiFiClient espClient;
@@ -473,7 +732,7 @@ void UC_OnHAMessage(void)
     HADevice *p_MyDevice = new HADevice("portal");
     p_MyDevice->setup(espClient, "localhost", 8383);
 
-    HAAdapterLed *p_Adapter = new HAAdapterLed("MyButton", D0);
+    HAAdapterLed *p_Adapter = new HAAdapterLed("MyLed", D0);
     p_Adapter->setup();
     p_Adapter->setDevice(p_MyDevice);
 
@@ -484,13 +743,14 @@ void UC_OnHAMessage(void)
     strcpy(mqttTopic, c3Root);
     strcat(mqttTopic, c3Act + 1);
 
-
-    p_MyDevice->onMQTTMessage(mqttTopic, (unsigned char*) "ON", (unsigned int) 2);
+    p_MyDevice->onMQTTMessage(mqttTopic, (unsigned char *)"ON", (unsigned int)2);
     delete (mqttTopic);
 
     delete (p_Adapter);
     delete (p_MyDevice);
 
+    uint32_t freeAfter = ESP.getFreeHeap();
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
 }
 
 void setup()
@@ -510,23 +770,23 @@ void setup()
     digitalWrite(LED_BUILTIN, LOW);
 
     delay(500);
-    RUN_TEST(UT_HANode_constructor);
-    RUN_TEST(UT_HADevice_constructor);
-    RUN_TEST(UT_HAComponentProperty);
-    RUN_TEST(UT_LinkedList);
-    RUN_TEST(UT_HAComponent_constructor);
-    RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
-    RUN_TEST(UT_HAComponent_GenerateId);
-    RUN_TEST(UT_HAComponent_GetTopicPath);
-    RUN_TEST(UT_HAComponent_DiscoveryMessage);
-    RUN_TEST(UT_HAComponentDeviceTrigger);
-    RUN_TEST(UT_HAAdapter_constructor);
-    RUN_TEST(UT_OnHAMessage);
-    
-    RUN_TEST(UC_SETUP);
-    RUN_TEST(UC_OnHAMessage);
-    
-    
+    // RUN_TEST(UT_HANode_constructor);
+    // RUN_TEST(UT_HADevice_constructor);
+    // RUN_TEST(UT_HAComponentProperty);
+    // RUN_TEST(UT_LinkedList);
+    // RUN_TEST(UT_HAComponent_constructor);
+    // RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
+    // RUN_TEST(UT_HAComponent_GenerateId);
+    // RUN_TEST(UT_HAComponent_GetTopicPath);
+    // RUN_TEST(UT_HAComponent_DiscoveryMessage);
+    // RUN_TEST(UT_HAComponentDeviceTrigger);
+    // RUN_TEST(UT_HAAdapter_constructor);
+    // RUN_TEST(UT_OnHAMessage);
+
+    // RUN_TEST(UC_SETUP);
+    // RUN_TEST(UC_OnHAMessage);
+    RUN_TEST(UC_UpStreamHAMessage);
+
     UNITY_END(); // stop unit testing
 }
 

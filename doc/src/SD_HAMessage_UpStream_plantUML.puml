@@ -16,7 +16,7 @@ participant HADevice
 participant HAAdapter
 end box
 
-box "homeassistant" #3eb7ed 
+box "homeassistant" #3eb7ed
 participant HANode
 participant HAComponent
 participant HAComponentDeviceTrigger
@@ -26,17 +26,18 @@ ArduinoCore->main : loop
 activate main
 
 alt for all adapters
-main->HAAdapter : loop
-activate HAAdapter
-note right : example of implementation
-HAAdapter->ArduinoCore : readDigital
-alt is DI state change
-HAAdapter->HAComponentDeviceTrigger : trigEvent
-activate HAComponentDeviceTrigger
-note right : build message for HAserver
-HAComponentDeviceTrigger->HANode : postMessage
-end
-return
+    main->HAAdapter : loop
+    activate HAAdapter
+    note right : example of implementation
+    HAAdapter->ArduinoCore : readDigital
+    alt is DI state change
+        HAAdapter->HAComponentDeviceTrigger : trigEvent
+        activate HAComponentDeviceTrigger
+        note right : build message\nfor HA Server
+        HAComponentDeviceTrigger->HANode : postMessage
+        return
+    end
+    return
 end
 
 ArduinoCore<--main :
@@ -44,27 +45,27 @@ deactivate main
 
 ArduinoCore->main : loop
 activate main
-	main->HADevice : loop
-    activate HADevice
+main->HADevice : loop
+activate HADevice
 
-	HADevice->WIFI : status
- 	alt WIFI connected
+HADevice->WIFI : status
+alt WIFI connected
     alt MQTT connected
 
-      HADevice->HANode:pickupOutboxMessage
-      activate HANode
-      HADevice<--HANode:
-      deactivate HANode
-      HADevice->PubSubClient:publish
-      activate PubSubClient
-      HAServer\\--PubSubClient:postMessage
-      note left : message will be received by HAserver
-      return
+        HADevice->HANode:pickupOutboxMessage
+        activate HANode
+        HADevice<--HANode:
+        deactivate HANode
+        HADevice->PubSubClient:publish
+        activate PubSubClient
+        HAServer\\--PubSubClient:postMessage
+        note left : message will be\nreceived by HA Server
+        return
 
-	end
     end
+end
 
-    return
+return
 return
 
 
