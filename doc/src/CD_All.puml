@@ -7,6 +7,7 @@ package "Arduino" #00878F {
   HADevice -- HAAdapter
   HAAdapter <|-- HAAdpterPushButton
   HAAdapter <|-- HAAdpterDSS238
+  HAAdapter <|-- HAAdpterLed
   class callback
 
 }
@@ -51,8 +52,8 @@ package "Homeassistant" #3eb7ed {
   }
   HAAction --> HAActionType : type
   HAAction <|-- HAMessage
-  HAAction <|--  HaSubscription
-  HAAction <|--  HaUnsubscription
+  HAAction <|-- HaSubscription
+  HAAction <|-- HaUnsubscription
 
   class HAMessage {
     +getMessage()
