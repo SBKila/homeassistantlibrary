@@ -1,0 +1,123 @@
+title Loop
+
+
+participantgroup #00878F **Arduino** 
+participant ArduinoCode
+participant main
+participantgroup #62AEB2  **library**
+participant HADevice
+participant HAAdapter
+end
+participant WIFI
+participant PubSubClient
+end 
+participantgroup #E47128 **homeassistant**
+participant HANode
+participant HAComponent
+end
+
+
+ArduinoCode->main : loop
+activate main
+
+main->HADevice : loop
+activate HADevice
+HADevice->WIFI : status
+activate WIFI
+HADevice<--WIFI:
+deactivate WIFI
+
+alt just connected
+
+
+alt MQTT NOT connected
+HADevice->HADevice:prepareMQTTInfo
+HADevice->PubSubClient:connect
+activate PubSubClient
+HADevice<--PubSubClient:
+deactivate PubSubClient
+
+HADevice->HADevice:sendAutoDiscovery
+activate HADevice
+
+HADevice->HANode:getDiscoveryMessages
+activate HANode
+HADevice<--HANode:
+deactivate HANode
+
+HADevice->HADevice:patchMessagesWithDeviceInfo
+
+HADevice->HANode:postMessage
+activate HANode
+HADevice<--HANode:
+deactivate HANode
+
+deactivate HADevice
+
+
+
+HADevice->HADevice:sendSubscription
+activate HADevice
+loop while actions
+HADevice->HANode:pickupOutboxAction
+activate HANode
+HADevice<--HANode:
+deactivate HANode
+HADevice->PubSubClient:subscribe
+end 
+deactivate HADevice
+
+
+HADevice->HADevice:sendAvailability
+activate HADevice
+HADevice->PubSubClient:publish
+activate PubSubClient
+HADevice<--PubSubClient:
+deactivate PubSubClient
+
+deactivate HADevice
+
+HADevice->HANode:onHAConnect
+activate HANode
+loop for all component
+HANode->HAComponent:onHAConnect
+activate HAComponent
+HAComponent->HAComponent:publishState
+activate HAComponent
+HAComponent->HANode:postMessage
+activate HANode
+HAComponent<-HANode:
+deactivate HANode
+HANode<--HAComponent:
+deactivate HAComponent
+deactivate HAComponent
+end
+HADevice<--HANode:
+deactivate HANode
+
+end
+
+alt MQTT connected
+
+HADevice->HANode:pickupOutboxMessage
+activate HANode
+HADevice<--HANode:
+deactivate HANode
+HADevice->PubSubClient:publish
+
+
+
+HADevice->HANode:pickupOutboxAction
+activate HANode
+HADevice<--HANode:
+deactivate HANode
+HADevice->PubSubClient:subscribe
+end 
+
+end
+
+main<--HADevice:
+deactivate HADevice
+
+ArduinoCode<--main :
+deactivate main

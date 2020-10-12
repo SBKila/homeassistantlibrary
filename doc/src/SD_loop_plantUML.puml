@@ -1,0 +1,122 @@
+@startuml
+title HommeAssistant Loop
+
+box "Arduino" #00878F
+participant ArduinoCore
+participant main
+participant WIFI
+participant PubSubClient
+end box
+
+box "library" #62AEB2
+participant HADevice
+participant HAAdapter
+end box
+
+box "homeassistant" #3eb7ed
+participant HANode
+participant HAComponent
+end box
+
+ArduinoCore->main : loop
+activate main
+
+main->HADevice : loop
+activate HADevice
+HADevice->WIFI : status
+activate WIFI
+return
+
+alt Wifi Connected
+
+  alt MQTT NOT connected
+
+    HADevice->HADevice:prepareMQTTInfo
+    HADevice->PubSubClient:connect
+
+    HADevice->HANode:postAutoDiscovery
+    activate HANode
+    loop each component
+      HANode->HAComponent:buildDiscoveryMessage
+      activate HAComponent
+      return
+      HANode->HANode:patchMessagesWithDeviceInfo
+      HANode->HANode:postMessage
+    end
+    HADevice<--HANode:
+    deactivate HANode
+
+    HADevice->HADevice:treatActions
+    activate HADevice
+    loop while actions
+      HADevice->HANode:pickupOutboxAction
+      activate HANode
+      HADevice<--HANode:
+      deactivate HANode
+      alt is HA subscribe
+        HADevice->PubSubClient:subscribe
+      else is HA unsubscribe
+        HADevice->PubSubClient:unsubscribe
+      else TBD
+      end
+
+    end
+    deactivate HADevice
+
+
+    HADevice->HADevice:sendAvailability
+    activate HADevice
+    HADevice->PubSubClient:publish
+    deactivate HADevice
+
+    HADevice->HANode:onHAConnect
+    activate HANode
+    loop for all component
+      HANode->HAComponent:onHAConnect
+      activate HAComponent
+      HAComponent->HAComponent:publishState
+      activate HAComponent
+      HAComponent->HANode:postMessage
+      activate HANode
+      HAComponent<-HANode:
+      deactivate HANode
+      HANode<--HAComponent:
+      deactivate HAComponent
+      deactivate HAComponent
+    end
+    HADevice<--HANode:
+    deactivate HANode
+
+  else MQTT connected
+
+    HADevice->HANode:pickupOutboxMessage
+    activate HANode
+    HADevice<--HANode:
+    deactivate HANode
+    HADevice->PubSubClient:publish
+
+
+
+    HADevice->HANode:pickupOutboxAction
+    activate HANode
+    HADevice<--HANode:
+    deactivate HANode
+    HADevice->PubSubClient:subscribe
+  end
+end
+
+main<--HADevice:
+deactivate HADevice
+
+alt for all adapters
+  main->HAAdapter : loop
+  activate HAAdapter
+  note right : Do Adapter stuff here
+  return
+end
+
+
+
+ArduinoCore<--main :
+deactivate main
+@enduml

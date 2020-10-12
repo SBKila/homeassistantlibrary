@@ -1,0 +1,22 @@
+{
+  "name": "HomeAssistantLibray",
+  "version": "1.0.0",
+  "description": "Library to manage HomeAssistant protocol",
+  "keywords": "ESP8266,HomeAssistant",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SBKila/homeassistantlibrary.git"
+  },
+  "authors": [
+    {
+      "name": "Blanc Stephane",
+      "email": "sblancduino@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/SBKila/homeassistantlibrary",
+  "dependencies": {},
+  "frameworks": "*",
+  "platforms": "espressif8266"
+}

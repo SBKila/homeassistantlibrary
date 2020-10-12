@@ -1,0 +1,40 @@
+@startuml
+title HommeAssistant Message management\nFrom HA Server
+
+box "Arduino" #00878F
+participant PubSubClient
+end box
+
+box "library" #62AEB2
+participant HADevice
+participant HAAdapter
+end box
+
+box "homeassistant" #3eb7ed
+participant HANode
+participant HAComponent
+end box
+
+PubSubClient -> HADevice : onMQTTMessage
+activate HADevice
+HADevice -> HANode : onHAMessage
+activate HANode
+loop for each components
+  HANode -> HAComponent : onHAMessage
+  activate HAComponent
+  loop action until message treated
+    alt action topic match
+      HAComponent->HAComponent:_execute
+    end
+  end
+  alt message treated
+    HANode <-- HAComponent : true
+  else message not treated
+    HANode <-- HAComponent : false
+  end
+  deactivate HAComponent
+end
+
+return
+return
+@enduml

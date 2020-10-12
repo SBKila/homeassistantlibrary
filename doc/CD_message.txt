@@ -1,0 +1,27 @@
+@startuml
+
+enum HAActionType {
+  SUBSCRIBE
+  UNSUBSCRIBE
+  POSTMESSAGE
+}
+
+class HAAction {
++getType()
++getTopic()
+}
+HAAction --> HAActionType : type
+HAAction <|-- HAMessage
+HAAction <|--  HaSubscription
+HAAction <|--  HaUnsubscription
+
+class HAMessage {
++getMessage()
++getRetains()
+}
+class HaSubscription {
+}
+class HaUnsubscription {
+}
+
+@enduml

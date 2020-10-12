@@ -1,0 +1,77 @@
+@startuml
+title Setup
+
+box "Arduino" #00878F
+participant ArduinoCode
+participant main
+participant PubSubClient
+end box
+
+box "library" #62AEB2
+participant HADevice
+participant HAAdapter
+end box
+
+box "homeassistant" #3eb7ed
+participant HANode
+participant HAComponent
+end box
+
+
+
+ArduinoCode->main : setup
+activate main
+create HADevice
+main->HADevice : new
+activate HADevice
+HADevice->HADevice : setDeviceInfo
+create PubSubClient
+HADevice->PubSubClient : new
+create HANode
+HADevice->HANode : new
+return
+main->HADevice:setup
+activate HADevice
+HADevice->PubSubClient : set client,server,callback
+return
+
+
+loop create all device adapters
+	create HAAdapter
+	main->HAAdapter : new
+	activate HAAdapter
+	loop
+		note right : depends on specific\nadapter stuff
+		create HAComponent
+		HAAdapter->HAComponent : new
+	end
+	return
+
+	main->HAAdapter : setup
+	activate HAAdapter
+	note right : do specific adapter\nsetup stuff here
+	return
+
+	main->HAAdapter : setDevice
+	activate HAAdapter
+	loop
+		HAAdapter->HADevice : getNode
+		activate HADevice
+		return
+		HAAdapter->HANode : addComponent
+		activate HANode
+		HANode->HAComponent : setNode
+		alt if component need HA message entry
+			activate HAComponent
+			HAComponent->HANode:registerHA
+			activate HANode
+			HANode->HANode:postAction
+			return
+		end
+		return
+		return
+	end
+	return
+end
+return
+@enduml

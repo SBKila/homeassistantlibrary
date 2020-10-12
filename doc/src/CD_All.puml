@@ -1,0 +1,69 @@
+@startuml General Class Diagram
+
+
+package "Arduino" #00878F {
+
+  class HADevice
+  HADevice -- HAAdapter
+  HAAdapter <|-- HAAdpterPushButton
+  HAAdapter <|-- HAAdpterDSS238
+  class callback
+
+}
+
+package "Homeassistant" #3eb7ed {
+
+  interface INode
+  class HANode
+  HADevice *-- HANode
+  INode <|-- HANode
+  HANode *-- IHAComponent : mComponents
+  HANode - "0..n" HAAction
+
+
+  interface IHAComponent
+  class HAComponent
+  IHAComponent <|-- HAComponent
+  HAComponent *-- "0..n" HAComponentProperty : mProperties
+  HAComponent *-- "0..n" HAComponentPropertyAction : mActions
+  HAAdapter *-- HAComponent
+
+  class HAComponentProperty
+  class HAComponentPropertyAction
+  HAComponentProperty <|-- HAComponentPropertyAction
+  callback -- HAComponentPropertyAction
+
+
+  HAComponent <|-- HAComponentBinarySensor
+  HAComponent <|-- HAComponentDeviceTrigger
+  HAComponent <|-- HAComponentLightBasic
+
+
+  enum HAActionType {
+    SUBSCRIBE
+    UNSUBSCRIBE
+    POSTMESSAGE
+  }
+
+  class HAAction {
+    +getType()
+    +getTopic()
+  }
+  HAAction --> HAActionType : type
+  HAAction <|-- HAMessage
+  HAAction <|--  HaSubscription
+  HAAction <|--  HaUnsubscription
+
+  class HAMessage {
+    +getMessage()
+    +getRetains()
+  }
+  class HaSubscription {
+    +getCallback()
+  }
+  class HaUnsubscription {
+  }
+
+}
+
+@enduml
