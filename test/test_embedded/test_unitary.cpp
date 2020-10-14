@@ -877,20 +877,20 @@ void setup()
     digitalWrite(LED_BUILTIN, LOW);
 
     delay(500);
-    // RUN_TEST(UT_HANode_constructor);
-    // RUN_TEST(UT_HADevice_constructor);
-    // RUN_TEST(UT_HAComponentProperty);
-    // RUN_TEST(UT_LinkedList);
-    // RUN_TEST(UT_HAComponent_constructor);
-    // RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
-    // RUN_TEST(UT_HAComponent_GenerateId);
-    // RUN_TEST(UT_HAComponent_GetTopicPath);
-    // RUN_TEST(UT_HAComponent_DiscoveryMessage);
-    // RUN_TEST(UT_HAComponentDeviceTrigger);
-    // RUN_TEST(UT_HAAdapter_constructor);
-    // RUN_TEST(UT_OnHAMessage);
+    RUN_TEST(UT_HANode_constructor);
+    RUN_TEST(UT_HADevice_constructor);
+    RUN_TEST(UT_HAComponentProperty);
+    RUN_TEST(UT_LinkedList);
+    RUN_TEST(UT_HAComponent_constructor);
+    RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
+    RUN_TEST(UT_HAComponent_GenerateId);
+    RUN_TEST(UT_HAComponent_GetTopicPath);
+    RUN_TEST(UT_HAComponent_DiscoveryMessage);
+    RUN_TEST(UT_HAComponentDeviceTrigger);
+    RUN_TEST(UT_HAAdapter_constructor);
+    RUN_TEST(UT_OnHAMessage);
 
-    // RUN_TEST(UC_SETUP);
+    RUN_TEST(UC_SETUP);
     RUN_TEST(UC_StreamHAMessages);
 
     UNITY_END(); // stop unit testing

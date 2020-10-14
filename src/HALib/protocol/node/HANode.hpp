@@ -221,11 +221,14 @@ namespace HALIB_NAMESPACE
             ;
         }
 
-        HAAction *pickupOutboxAction()
+        HAAction *pickupAction()
         {
-            // DEBUG_PRINT("pickupOutboxAction ");
+            // DEBUG_PRINT("pickupAction ");
             // DEBUG_PRINTLN(mOutboxAction.getSize());
             return mOutboxAction.shift();
+        }
+        int actionsSize(){
+            return mOutboxAction.getSize();
         }
 
         void retryAction(HAAction* p_pAction){

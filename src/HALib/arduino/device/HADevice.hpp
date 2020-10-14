@@ -78,7 +78,7 @@ namespace HALIB_NAMESPACE
                     { // mqtt still connected
                         //DEBUG_PRINTLN("=> mqtt connected");
                         //m_MqttClient.loop();
-                        while(treatActions());
+                        treatActions();
                     }
 
                     m_MqttClient.loop();
@@ -217,10 +217,20 @@ namespace HALIB_NAMESPACE
             }
             return success;
         }
-        bool treatActions()
+        
+        void treatActions(){
+            
+            int nbAction = m_pNode->actionsSize();
+            
+            while(
+                (0!=nbAction--) && 
+                treatAction(m_pNode->pickupAction()));
+            
+        }
+        bool treatAction(HAAction *l_pCmd)
         {
             //DEBUG_PRINTLN("treatActions");
-            HAAction *l_pCmd = m_pNode->pickupOutboxAction();
+            
             if (NULL != l_pCmd)
             {
                 // DEBUG_PRINT("treatMessage type");

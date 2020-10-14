@@ -74,20 +74,38 @@ alt Wifi Connected
     deactivate HANode
 
   else MQTT connected
-
-    loop while actions available
-      HADevice->HANode:pickupOutboxAction
+    
+    HADevice->HADevice:treatActions
+    activate HADevice
+      HADevice->HANode:actionsSize
       activate HANode
-      HADevice<--HANode:
-      deactivate HANode
-      alt
-        HADevice->PubSubClient:subscribe
-      else
-        HADevice->PubSubClient:unsubscribe
-      else
-        HADevice->PubSubClient:publish
+      return
+      loop actions
+        
+        HADevice->HANode:pickupAction
+        activate HANode
+        HADevice<--HANode:
+        deactivate HANode
+        alt
+          HADevice->PubSubClient:subscribe
+          activate PubSubClient
+          return
+        else
+          HADevice->PubSubClient:unsubscribe
+          activate PubSubClient
+          return
+        else
+          HADevice->PubSubClient:publish
+          activate PubSubClient
+          return
+        end
+        alt failed
+          HADevice->HANode:retryAction
+          activate HANode
+          return
+        end
       end
-    end
+    deactivate HADevice
   end
 end
 
