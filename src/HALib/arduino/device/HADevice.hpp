@@ -66,8 +66,6 @@ namespace HALIB_NAMESPACE
                         if (connectMQTTServer())
                         {
                             DEBUG_PRINTLN("=> mqtt now connected");
-                            //m_pNode->postAutoDiscovery();
-                            //while (treatActions());
                             sendAvailability(true);
                             m_pNode->onHAConnect();
                         }

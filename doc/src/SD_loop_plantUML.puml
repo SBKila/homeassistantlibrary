@@ -1,5 +1,5 @@
 @startuml
-title HommeAssistant Loop
+title Loop
 
 box "Arduino" #00878F
 participant ArduinoCore
@@ -34,36 +34,6 @@ alt Wifi Connected
     HADevice->HADevice:prepareMQTTInfo
     HADevice->PubSubClient:connect
 
-    HADevice->HANode:postAutoDiscovery
-    activate HANode
-    loop each component
-      HANode->HAComponent:buildDiscoveryMessage
-      activate HAComponent
-      return
-      HANode->HANode:patchMessagesWithDeviceInfo
-      HANode->HANode:postMessage
-    end
-    HADevice<--HANode:
-    deactivate HANode
-
-    HADevice->HADevice:treatActions
-    activate HADevice
-    loop while actions
-      HADevice->HANode:pickupOutboxAction
-      activate HANode
-      HADevice<--HANode:
-      deactivate HANode
-      alt is HA subscribe
-        HADevice->PubSubClient:subscribe
-      else is HA unsubscribe
-        HADevice->PubSubClient:unsubscribe
-      else TBD
-      end
-
-    end
-    deactivate HADevice
-
-
     HADevice->HADevice:sendAvailability
     activate HADevice
     HADevice->PubSubClient:publish
@@ -72,16 +42,32 @@ alt Wifi Connected
     HADevice->HANode:onHAConnect
     activate HANode
     loop for all component
-      HANode->HAComponent:onHAConnect
+      HANode->HAComponent:_onHAConnect
       activate HAComponent
+      alt is first connection
+        HAComponent->HANode:postDiscoveryMessage
+        activate HANode
+        HANode->HAComponent:buildDiscoveryMessage
+        activate HAComponent
+        return
+        HANode->HANode:patchMessagesWithDeviceInfo
+        HANode->HANode:postMessage
+        return
+      end
+
+      HAComponent->HAComponent:onHAConnect
+      activate HAComponent
+      
       HAComponent->HAComponent:publishState
+      note right : following depends\nof component\nimplementation
       activate HAComponent
-      HAComponent->HANode:postMessage
-      activate HANode
-      HAComponent<-HANode:
-      deactivate HANode
-      HANode<--HAComponent:
+        HAComponent->HANode:postMessage
+        activate HANode
+         return
       deactivate HAComponent
+      deactivate HAComponent
+      
+      HANode<--HAComponent:
       deactivate HAComponent
     end
     HADevice<--HANode:
@@ -89,19 +75,19 @@ alt Wifi Connected
 
   else MQTT connected
 
-    HADevice->HANode:pickupOutboxMessage
-    activate HANode
-    HADevice<--HANode:
-    deactivate HANode
-    HADevice->PubSubClient:publish
-
-
-
-    HADevice->HANode:pickupOutboxAction
-    activate HANode
-    HADevice<--HANode:
-    deactivate HANode
-    HADevice->PubSubClient:subscribe
+    loop while actions available
+      HADevice->HANode:pickupOutboxAction
+      activate HANode
+      HADevice<--HANode:
+      deactivate HANode
+      alt
+        HADevice->PubSubClient:subscribe
+      else
+        HADevice->PubSubClient:unsubscribe
+      else
+        HADevice->PubSubClient:publish
+      end
+    end
   end
 end
 

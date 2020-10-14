@@ -55,10 +55,9 @@ loop create all device adapters
 	main->HAAdapter : setDevice
 	activate HAAdapter
 	loop
-		HAAdapter->HADevice : getNode
+		HAAdapter->HADevice : addComponent
 		activate HADevice
-		return
-		HAAdapter->HANode : addComponent
+		HADevice->HANode : addComponent
 		activate HANode
 		HANode->HAComponent : setNode
 		alt if component need HA message entry

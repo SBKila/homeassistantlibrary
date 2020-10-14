@@ -34,11 +34,9 @@ package "Homeassistant" #3eb7ed {
   HAComponentProperty <|-- HAComponentPropertyAction
   callback -- HAComponentPropertyAction
 
-
   HAComponent <|-- HAComponentBinarySensor
   HAComponent <|-- HAComponentDeviceTrigger
   HAComponent <|-- HAComponentLightBasic
-
 
   enum HAActionType {
     SUBSCRIBE
@@ -49,22 +47,20 @@ package "Homeassistant" #3eb7ed {
   class HAAction {
     +getType()
     +getTopic()
+    +retry()
   }
-  HAAction --> HAActionType : type
-  HAAction <|-- HAMessage
-  HAAction <|-- HaSubscription
-  HAAction <|-- HaUnsubscription
-
   class HAMessage {
     +getMessage()
     +getRetains()
   }
-  class HaSubscription {
-    +getCallback()
+  class HASubscribCmd {
+    +isSubscribtion()
   }
-  class HaUnsubscription {
-  }
-
+  HAAction --> HAActionType : type
+  HAAction <|-- HAMessage
+  HAAction <|-- HASubscribCmd
+  
+  
 }
 
 @enduml

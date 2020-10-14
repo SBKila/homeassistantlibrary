@@ -10,24 +10,31 @@ participant HADevice
 participant HAAdapter
 end box
 
-box "homeassistant" #3eb7ed 
+box "homeassistant" #3eb7ed
 participant HANode
 participant HAComponent
 end box
 
 PubSubClient -> HADevice : onMQTTMessage
-  activate HADevice
-  HADevice -> HANode : onMQTTMessage
-    activate HANode
-    loop "for each components"
-    HANode -> HAComponent : onMQTTMessage
-    activate HAComponent
-      alt message managed
-      HANode <-- HAComponent : true
-      else message not managed
-      HANode <-- HAComponent : false
-      deactivate HAComponent
+activate HADevice
+HADevice -> HANode : onHAMessage
+activate HANode
+loop for each components
+  HANode -> HAComponent : onHAMessage
+  activate HAComponent
+  loop action until message treated
+    alt action topic match
+      HAComponent->HAComponent:_execute
     end
-    return
-  return
+  end
+  alt message treated
+    HANode <-- HAComponent : true
+  else message not treated
+    HANode <-- HAComponent : false
+  end
+  deactivate HAComponent
+end
+
+return
+return
 @enduml

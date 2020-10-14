@@ -1,5 +1,5 @@
 @startuml
-title HommeAssistant Loop
+title HommeAssistant Message management\nTo HA Server
 
 actor HAServer
 
