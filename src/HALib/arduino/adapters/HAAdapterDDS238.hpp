@@ -69,8 +69,8 @@ namespace HALIB_NAMESPACE
         }
         virtual void setDevice(HADevice *p_pDevice)
         {
-            p_pDevice->getNode()->addComponent(m_pCumulaticComponent);
-            //p_pDevice->getNode()->addComponent(m_pInstantComponent);
+            p_pDevice->addComponent(m_pCumulaticComponent);
+            p_pDevice->addComponent(m_pInstantComponent);
         }
 
         virtual void restore(DDS238Data persistence)

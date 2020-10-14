@@ -26,6 +26,7 @@ namespace HALIB_NAMESPACE
     void HAComponentDeviceTrigger::onHAConnect()
     {
     }
+    
     void HAComponentDeviceTrigger::trigEvent()
     {
         char topic[getTopicPath(PROP_TOPIC_TOPIC) + 1];

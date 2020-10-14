@@ -1,40 +1,28 @@
 #pragma once
 
 #include <Arduino.h>
+#include "HAAction.hpp"
 
 namespace HALIB_NAMESPACE
 {
-    class HAMessage
+    class HAMessage : public HAAction
     {
+
     public:
-        HAMessage(const char *p_pTopic, const char *p_pMessage, boolean p_Retain)
+        HAMessage(const char *p_pTopic, const char *p_pMessage, boolean p_Retain) : HAAction(POSTMESSAGE,p_pTopic)
         {
-            setTopic(p_pTopic);
             setMessage(p_pMessage);
             setRetain(p_Retain);
         }
-        HAMessage()
+        HAMessage() : HAAction(POSTMESSAGE)
         {
-            topic = NULL;
             message = NULL;
             retain = false;
         }
-        ~HAMessage()
+        virtual ~HAMessage()
         {
-            if (NULL != topic)
-                free(topic);
             if (NULL != message)
                 free(message);
-        }
-
-        const char *getTopic()
-        {
-            return topic;
-        }
-        void setTopic(const char *topic)
-        {
-
-            this->topic = strdup(topic);
         }
 
         const char *getMessage()
@@ -55,11 +43,10 @@ namespace HALIB_NAMESPACE
             return retain;
         }
 
-        bool operator!=(const HAMessage &other) { return 0 != (strcmp(other.topic, topic) + strcmp(other.message, message)); }
-        bool operator==(const HAMessage &other) { return 0 == (strcmp(other.topic, topic) + strcmp(other.message, message)); }
+        bool operator!=(const HAMessage &other) { return HAAction::operator!=(other) || (0 != strcmp(other.message, message)); }
+        bool operator==(const HAMessage &other) { return HAAction::operator==(other) && (0 == strcmp(other.message, message)); }
 
     private:
-        char *topic;
         char *message;
         boolean retain;
     };

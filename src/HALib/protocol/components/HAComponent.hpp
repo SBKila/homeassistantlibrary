@@ -149,6 +149,7 @@ namespace HALIB_NAMESPACE
             }
 
             *currentPosition = '}';
+
             return discoveryString;
         }
 
@@ -195,7 +196,17 @@ namespace HALIB_NAMESPACE
 
             return match;
         }
-        virtual void onHAConnect(){};
+        
+        virtual void _onHAConnect(){
+            if(isFirstHAConnection){
+                m_pNode->postDiscoveryMessage(this);
+                isFirstHAConnection = false;
+            }
+            onHAConnect();
+        };
+        void onHAConnect(){};
+
+        
         virtual bool operator==(IHAComponent &other)
         {
             return other.getId() == getId();
@@ -231,6 +242,7 @@ namespace HALIB_NAMESPACE
         uint32_t m_ComponentId;
         LinkedList<HAComponentProperty *> mProperties;
         LinkedList<HAComponentProperty *> mActions;
+        boolean isFirstHAConnection = true;
 
 #ifdef UNIT_TEST
     public:

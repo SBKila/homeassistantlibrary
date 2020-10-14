@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "../../tools/LinkedList.hpp"
 #include "../../tools/HAUtils.hpp"
-#include "HASubscribCmd.hpp"
+#include "../HASubscribCmd.hpp"
 #include "../HAMessage.hpp"
 #include "../IHANode.h"
 #include "../IHAComponent.h"
@@ -38,19 +38,11 @@ namespace HALIB_NAMESPACE
                 free(mName);
             }
 
-            HASubscribCmd* pAction = mOutboxAction.shift();
+            HAAction* pAction = mOutboxAction.shift();
             while (NULL != pAction)
             {
                 delete (pAction);
                 pAction = mOutboxAction.shift();
-            }
-
-
-            HAMessage *pMessage = mOutboxMessage.shift();
-            while (NULL != pMessage)
-            {
-                delete (pMessage);
-                pMessage = (HAMessage *)mOutboxMessage.shift();
             }
 
              HAUtils::deleteProperties(mProperties);
@@ -113,7 +105,7 @@ namespace HALIB_NAMESPACE
 
         void postAutoDiscovery()
         {
-            DEBUG_PRINTLN("postAutoDiscovery");
+            DEBUG_PRINTLN("===>postAutoDiscovery");
 
             char *tempDeviceInfo = HAUtils::propertyListToJson(mProperties);
             size_t deviceInfoLength = strlen(tempDeviceInfo) - 2; // -2 remove {}
@@ -147,6 +139,39 @@ namespace HALIB_NAMESPACE
             free(tempDeviceInfo);
         };
 
+        void postDiscoveryMessage(IHAComponent *pComponent){
+            DEBUG_PRINTLN("===>postDiscoveryMessage");
+            char *tempDeviceInfo = HAUtils::propertyListToJson(mProperties);
+            size_t deviceInfoLength = strlen(tempDeviceInfo) - 2;
+            char *topic = pComponent->buildDiscoveryTopic("homeassistant", mName);
+            char *componentDiscoveryMessage = pComponent->buildDiscoveryMessage();
+
+            char *discoveryMessage = componentDiscoveryMessage;
+            
+            // if device info present patch component discovery message
+            if (deviceInfoLength != 0)
+            {
+                size_t discoveryMessagesLength = strlen(componentDiscoveryMessage);
+                discoveryMessage = (char *)malloc(discoveryMessagesLength + 1 + deviceInfoLength + 1);
+
+                strcpy(discoveryMessage, componentDiscoveryMessage);
+                strcpy(discoveryMessage + discoveryMessagesLength - 1, ",");
+                strncpy(discoveryMessage + discoveryMessagesLength - 1 + 1, tempDeviceInfo + 1, deviceInfoLength); //+1 to skip first {
+                strcpy(discoveryMessage + discoveryMessagesLength - 1 + 1 + deviceInfoLength, "}");
+
+                free(componentDiscoveryMessage);
+            }
+            
+            // DEBUG_PRINT("topic: ");
+            // DEBUG_PRINTLN(topic);
+            // DEBUG_PRINT("discoveryMessage: ");
+            // DEBUG_PRINTLN(discoveryMessage);
+            postMessage(new HAMessage(topic, discoveryMessage, true));
+            free(topic);
+            free(discoveryMessage);
+            free(tempDeviceInfo);
+        }
+
         bool onHAMessage(const char *topic, const byte* p_pPayload, const unsigned int length)
         {
             
@@ -163,11 +188,11 @@ namespace HALIB_NAMESPACE
             return false;
         }
 
-        boolean postMessage(HAMessage *pMessage)
+        void postMessage(HAMessage *pMessage)
         {
-            mOutboxMessage.append(pMessage);
-            return true;
+            mOutboxAction.append(pMessage);
         }
+
 
         void onHAConnect()
         {
@@ -175,8 +200,7 @@ namespace HALIB_NAMESPACE
             {
                 // get component at index
                 IHAComponent *pComponent = (IHAComponent *)mComponents.get(index);
-
-                pComponent->onHAConnect();
+                pComponent->_onHAConnect();
             }
         }
         int getDiscoveryMessages(HAMessage *pMessages)
@@ -197,13 +221,15 @@ namespace HALIB_NAMESPACE
             ;
         }
 
-        HAMessage *pickupOutboxMessage()
+        HAAction *pickupOutboxAction()
         {
-            return mOutboxMessage.shift();
-        }
-        HASubscribCmd *pickupOutboxAction()
-        {
+            // DEBUG_PRINT("pickupOutboxAction ");
+            // DEBUG_PRINTLN(mOutboxAction.getSize());
             return mOutboxAction.shift();
+        }
+
+        void retryAction(HAAction* p_pAction){
+            mOutboxAction.append(p_pAction);
         }
 
     private:
@@ -211,12 +237,13 @@ namespace HALIB_NAMESPACE
     public:
 #endif
 
-        boolean postMessage(const char *pTopic, const char *pMessage, boolean retain)
+        void postMessage(const char *pTopic, const char *pMessage, boolean retain)
         {
-            return postMessage(new HAMessage(pTopic, pMessage, retain));
+            postMessage(new HAMessage(pTopic, pMessage, retain));
         }
         void registerToHA(const char *topic, boolean subscription = true)
         {
+            DEBUG_PRINTLN("===>postSupscribe");
             mOutboxAction.append(new HASubscribCmd(topic, subscription));
         }
 
@@ -224,8 +251,7 @@ namespace HALIB_NAMESPACE
         char *mName;
         uint32_t mId;
         LinkedList<IHAComponent *> mComponents;
-        LinkedList<HAMessage *> mOutboxMessage;
-        LinkedList<HASubscribCmd *> mOutboxAction;
+        LinkedList<HAAction *> mOutboxAction;
         LinkedList<HAComponentProperty *> mProperties;
     };
 } // namespace HALIB_NAMESPACE

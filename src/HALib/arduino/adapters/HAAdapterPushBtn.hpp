@@ -56,8 +56,8 @@ namespace HALIB_NAMESPACE
         }
         virtual void onBtPressed()
         {
-            DEBUG_PRINT(F("On bt pressed "));
-            DEBUG_PRINT(m_pComponent->getName());
+            // DEBUG_PRINT(F("On bt pressed "));
+            // DEBUG_PRINT(m_pComponent->getName());
             m_pComponent->trigEvent();
         }
         virtual JsonObject toJson()
@@ -78,7 +78,7 @@ namespace HALIB_NAMESPACE
 
         virtual void setDevice(HADevice *p_pDevice)
         {
-            p_pDevice->getNode()->addComponent(m_pComponent);
+            p_pDevice->addComponent(m_pComponent);
         }
 
     protected:

@@ -52,6 +52,7 @@ namespace HALIB_NAMESPACE
     private:
         void publishState()
         {
+            DEBUG_PRINTLN("===>publishState");
             char topic[getTopicPath(PROP_STATE_TOPIC) + 1];
             //DEBUG_PRINTLN_DEC(sizeof(topic));
             getTopicPath(PROP_STATE_TOPIC, topic);

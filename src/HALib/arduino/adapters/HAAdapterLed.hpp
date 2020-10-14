@@ -18,7 +18,7 @@ namespace HALIB_NAMESPACE
         }
         virtual void setDevice(HADevice *p_pDevice)
         {
-            p_pDevice->getNode()->addComponent(m_pComponent);
+            p_pDevice->addComponent(m_pComponent);
         }
         virtual void _setup()
         {
@@ -31,7 +31,7 @@ namespace HALIB_NAMESPACE
     public:
 #endif
         HAComponentLigthBasic *m_pComponent;
-        void powerOn(boolean powerOn)
+        virtual void powerOn(boolean powerOn)
         {
             digitalWrite(m_IOReference, powerOn ? LOW : HIGH);
         };

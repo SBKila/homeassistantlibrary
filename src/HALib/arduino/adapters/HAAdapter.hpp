@@ -9,7 +9,7 @@ namespace HALIB_NAMESPACE
 {
     class HAAdapter : public IHAAdapter
     {
-    public:
+        public:
         HAAdapter(const char *name, uint8_t ioReference)
         {
             strncpy(m_Name, name, 20);

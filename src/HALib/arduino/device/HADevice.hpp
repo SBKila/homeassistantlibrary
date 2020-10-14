@@ -13,7 +13,7 @@ namespace HALIB_NAMESPACE
     const char DEVICEIDENTIFIER_TEMPALTE[] PROGMEM = "%s-%08X";
     class HADevice
     {
-
+        
     public:
         HADevice(const char *pDeviceName, const char *pManuf = NULL, const char *pModel = NULL, const char *pRelease = NULL)
         {
@@ -45,10 +45,7 @@ namespace HALIB_NAMESPACE
             m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length) { this->onMQTTMessage(topic, payload, length); });
         };
 
-        void addComponent(HAComponent *p_pComponent)
-        {
-            m_pNode->addComponent(p_pComponent);
-        }
+        
 
         void loop(wl_status_t wifiStatus)
         {
@@ -56,11 +53,11 @@ namespace HALIB_NAMESPACE
             if (wifiStatus == WL_CONNECTED)
             { // assigned when wifi connection is established
                 //DEBUG_PRINTLN("=> Wifi connected");
-                if (m_PreviousWifiStatus != WL_CONNECTED)
-                {   // wifi just connected
-                    // DEBUG_PRINTLN("wifi just connected");
-                }
-                else
+                // if (m_PreviousWifiStatus != WL_CONNECTED)
+                // { // wifi just connected
+                //     // DEBUG_PRINTLN("wifi just connected");
+                // }
+                // else
                 { // wifi connected
                     if (!m_MqttClient.connected())
                     { // mqtt not connected
@@ -68,10 +65,9 @@ namespace HALIB_NAMESPACE
                         //m_MqttClient.loop();
                         if (connectMQTTServer())
                         {
-                            //DEBUG_PRINTLN("=> mqtt now connected");
-                            m_pNode->postAutoDiscovery();
-                            while (treatActions())
-                                ;
+                            DEBUG_PRINTLN("=> mqtt now connected");
+                            //m_pNode->postAutoDiscovery();
+                            //while (treatActions());
                             sendAvailability(true);
                             m_pNode->onHAConnect();
                         }
@@ -84,8 +80,7 @@ namespace HALIB_NAMESPACE
                     { // mqtt still connected
                         //DEBUG_PRINTLN("=> mqtt connected");
                         //m_MqttClient.loop();
-                        treatOutbox();
-                        treatActions();
+                        while(treatActions());
                     }
 
                     m_MqttClient.loop();
@@ -97,7 +92,13 @@ namespace HALIB_NAMESPACE
         {
             return m_pNode;
         }
-
+        void addComponent(HAComponent *p_pComponent)
+        {
+            m_pNode->addComponent(p_pComponent);
+            if(m_PreviousWifiStatus==WL_CONNECTED){
+                p_pComponent->_onHAConnect();
+            }
+        }
     private:
 #ifdef UNIT_TEST
     public:
@@ -106,10 +107,12 @@ namespace HALIB_NAMESPACE
         HANode *m_pNode;
         wl_status_t m_PreviousWifiStatus = WL_DISCONNECTED;
         wl_status_t m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
-        ESP8266WiFiClass *mWifi = & WiFi;
+        ESP8266WiFiClass *mWifi = &WiFi;
 
+        
         void onMQTTMessage(char *topic, unsigned char *payload, unsigned int length)
         {
+            //DEBUG_PRINTLN("onMQTTMessage");
             m_pNode->onHAMessage(topic, payload, length);
         }
 
@@ -155,86 +158,101 @@ namespace HALIB_NAMESPACE
 
             return status;
         }
-        bool treatOutbox()
+        bool postMessage(HAMessage *message)
         {
-            DEBUG_PRINTLN("treatOutbox");
-            HAMessage *message = m_pNode->pickupOutboxMessage();
+            const char *offset = message->getMessage();
+            const char* topic = message->getTopic();
 
-            if (NULL != message)
+        size_t messageLength = strlen(offset);
+            // DEBUG_PRINT("postMessage ");
+            // DEBUG_PRINT(messageLength);
+            // DEBUG_PRINT(" ");
+            // DEBUG_PRINTLN(offset);
+            
+            boolean success = false;
+
+            if (MQTT_MAX_PACKET_SIZE < (messageLength+2+strlen(topic)))
             {
-                // DEBUG_PRINTLN("Message available");
-
-                const char *offset = message->getMessage();
-                size_t messageLength = strlen(offset);
-
-                boolean success = false;
-
-                if (MQTT_MAX_PACKET_SIZE < messageLength)
+                // DEBUG_PRINTLN("Long Message");
+                success = m_MqttClient.beginPublish(topic, messageLength, 0);
+                // DEBUG_PRINTLN("starting");
+                //DEBUG_PRINTLN_DEC(messageLength);
+                while (success && (0 != messageLength))
                 {
-                    // DEBUG_PRINTLN("Long Message");
-                    success = m_MqttClient.beginPublish(message->getTopic(), messageLength, 0);
-                    // DEBUG_PRINTLN("starting");
-                    //DEBUG_PRINTLN_DEC(messageLength);
-                    while (success && (0 != messageLength))
-                    {
-                        int sentdata = 0;
-                        sentdata = m_MqttClient.write((byte *)offset, messageLength);
-                        success = 0 != sentdata;
-                        offset += sentdata;
-                        messageLength = strlen(offset);
+                    int sentdata = 0;
+                    sentdata = m_MqttClient.write((byte *)offset, messageLength);
+                    success = 0 != sentdata;
+                    offset += sentdata;
+                    messageLength = strlen(offset);
 
-                        // DEBUG_PRINTLN_DEC(sentdata);
-                        // DEBUG_PRINTLN_DEC(messageLength);
-                        // DEBUG_PRINTLN("sending");
-                    }
-
-                    // DEBUG_PRINTLN("ending");
-                    m_MqttClient.endPublish();
-                    // DEBUG_PRINTLN("sent");
-                }
-                else
-                {
-                    // DEBUG_PRINTLN("Short Message");
-                    success = m_MqttClient.publish(message->getTopic(), message->getMessage());
+                    // DEBUG_PRINTLN_DEC(sentdata);
+                    // DEBUG_PRINTLN_DEC(messageLength);
+                    // DEBUG_PRINTLN("sending");
                 }
 
-                if (success)
-                {
-                    // DEBUG_PRINTLN("Message sent");
-                    delete message;
-                }
-                else
-                {
-                    // DEBUG_PRINTLN("Message not sent");
-                    m_pNode->postMessage(message);
-                }
-
-                return true;
+                // DEBUG_PRINTLN("ending");
+                m_MqttClient.endPublish();
+                // DEBUG_PRINTLN("sent");
             }
             else
             {
-                return false;
+                // DEBUG_PRINTLN("Short Message");
+                success = m_MqttClient.publish(topic, offset);
             }
+
+            return success;
+        }
+        bool subscribeTopic(HASubscribCmd *p_pCmd)
+        {
+            boolean success = false;
+            if (p_pCmd->isSubscribtion())
+            {
+                // DEBUG_PRINT("Subscription to ");
+                // DEBUG_PRINTLN(p_pCmd->getTopic());
+                success = m_MqttClient.subscribe(p_pCmd->getTopic());
+            }
+            else
+            {
+                // DEBUG_PRINT("Unsubscription to ");
+                // DEBUG_PRINTLN(p_pCmd->getTopic());
+                success = m_MqttClient.unsubscribe(p_pCmd->getTopic());
+            }
+            return success;
         }
         bool treatActions()
         {
-            DEBUG_PRINTLN("treatActions");
-            HASubscribCmd *l_pCmd = m_pNode->pickupOutboxAction();
+            //DEBUG_PRINTLN("treatActions");
+            HAAction *l_pCmd = m_pNode->pickupOutboxAction();
             if (NULL != l_pCmd)
             {
-                if (l_pCmd->isSubscribtion())
+                // DEBUG_PRINT("treatMessage type");
+                // DEBUG_PRINTLN(l_pCmd->getType());
+                boolean done = false;
+                switch (l_pCmd->getType())
                 {
-                    m_MqttClient.subscribe(l_pCmd->getTopic());
-                    DEBUG_PRINT("Subscription to");
-                    DEBUG_PRINTLN(l_pCmd->getTopic());
+                case POSTMESSAGE:
+                    done = postMessage((HAMessage *)l_pCmd);
+                    break;
+                case SUBSCRIPTION:
+                    done = subscribeTopic((HASubscribCmd *)l_pCmd);
+                    break;
+                }
+
+                if (done)
+                {
+                    delete l_pCmd;
                 }
                 else
                 {
-                    m_MqttClient.unsubscribe(l_pCmd->getTopic());
-                    DEBUG_PRINT("Unsubscription to");
-                    DEBUG_PRINTLN(l_pCmd->getTopic());
+                    if (l_pCmd->retry() < 250)
+                    {
+                        m_pNode->retryAction(l_pCmd);
+                    }
+                    else
+                    {
+                        delete l_pCmd;
+                    }
                 }
-                delete l_pCmd;
                 return true;
             }
             else

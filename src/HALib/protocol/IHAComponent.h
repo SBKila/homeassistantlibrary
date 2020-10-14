@@ -13,6 +13,7 @@ namespace HALIB_NAMESPACE
         virtual char *buildDiscoveryTopic(const char *pDiscoveryPrefix, const char *pNodeId = NULL) = 0;
         virtual char *buildDiscoveryMessage() = 0;
         virtual bool onHAMessage(const char *topic, const byte *payload, const unsigned int length) = 0;
+        virtual void _onHAConnect() = 0;
         virtual void onHAConnect() = 0;
         virtual bool operator==(IHAComponent &other) = 0;
         virtual bool operator!=(IHAComponent &other) = 0;

@@ -10,13 +10,13 @@ namespace HALIB_NAMESPACE
         virtual const char *getName() =0 ;
         virtual uint32_t getId() =0;
         
-        
         virtual void addComponent(IHAComponent *p_pComponent) =0;
         
-        
-        virtual boolean postMessage(const char *pTopic, const char *pMessage, boolean retain) =0 ;
+        virtual void postMessage(const char *pTopic, const char *pMessage, boolean retain) =0 ;
+        virtual void postDiscoveryMessage(IHAComponent *p_pComponent);
         virtual void registerToHA(const char *topic, boolean subscription = true) =0 ;
         virtual bool onHAMessage(const char *topic, const byte *payload, const unsigned int length) =0;
+        virtual void retryAction(HAAction* p_pAction) =0;
     };
 
 } // namespace HALIB_NAMESPACE
