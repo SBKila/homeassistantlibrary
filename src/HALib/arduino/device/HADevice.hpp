@@ -148,10 +148,9 @@ namespace HALIB_NAMESPACE
             bool status = m_MqttClient.connect(deviceId, willTopic, willQos, willRetain, willMessage);
             //@todo login/password will message
 
-            HALIB_DEVICE_DEBUG_MSG("mqtt connection status: %s\n",status);
+            HALIB_DEVICE_DEBUG_MSG("mqtt connection status: %s\n",(status)?"true":"false");
 
             free(deviceId);
-
             return status;
         }
         bool postMessage(HAMessage *message)
@@ -194,7 +193,7 @@ namespace HALIB_NAMESPACE
                 success = m_MqttClient.publish(topic, offset);
             }
 
-            HALIB_DEVICE_DEBUG_MSG("postMessageEND (%s)\n",success?"true","false");
+            HALIB_DEVICE_DEBUG_MSG("postMessageEND (%s)\n",(success)?"true":"false");
             return success;
         }
         bool subscribeTopic(HASubscribCmd *p_pCmd)
@@ -260,17 +259,17 @@ namespace HALIB_NAMESPACE
                 success = true;
             }
 
-            HALIB_DEVICE_DEBUG_MSG("treatActionEND (%s)\n":success?"true":"false");
+            HALIB_DEVICE_DEBUG_MSG("treatActionEND (%s)\n",(success)?"true":"false");
             return success;
         }
         bool sendAvailability(boolean available)
         {
             const char *availabilityTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
             const char *availabilityMessage = m_pNode->getProperty(available ? PROP_PAYLOAD_AVAILABLE : PROP_PAYLOAD_NOT_AVAILABLE);
-            HALIB_DEVICE_DEBUG_MSG('sendAvailability\nTopic: %s\nMessage:%s\n',availabilityTopic,availabilityMessage);
+            HALIB_DEVICE_DEBUG_MSG("sendAvailability\nTopic: %s\nMessage: %s\n",availabilityTopic, availabilityMessage);
             // DEBUG_PRINTLN_DEC(MQTT_MAX_PACKET_SIZE);
             m_MqttClient.publish(availabilityTopic, availabilityMessage, true);
-            HALIB_DEVICE_DEBUG_MSG('sendAvailabilityEND\n');
+            HALIB_DEVICE_DEBUG_MSG("sendAvailabilityEND\n");
             return true;
         }
 
