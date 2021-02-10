@@ -17,13 +17,16 @@ namespace HALIB_NAMESPACE
     public:
         HADevice(const char *pDeviceName, const char *pManuf = NULL, const char *pModel = NULL, const char *pRelease = NULL)
         {
+            HALIB_DEVICE_DEBUG_MSG("Constructor\n");
             mWifi = &WiFi;
             m_pNode = new HANode(pDeviceName);
             m_pNode->setDeviceInfo(pManuf, pModel, pRelease);
             m_openHabMqttUrl = NULL;
+            HALIB_DEVICE_DEBUG_MSG("ConstructorEND\n");
         };
         ~HADevice()
         {
+            HALIB_DEVICE_DEBUG_MSG("Destructor\n");
             delete m_pNode;
 
             if (NULL != m_openHabMqttUrl)
@@ -32,10 +35,12 @@ namespace HALIB_NAMESPACE
             }
 
             HAUtils::deleteProperties(mProperties);
+            HALIB_DEVICE_DEBUG_MSG("DestructorEND\n");
         };
 
         void setup(Client &pEthClient, const char *openHabMqttUrl, const int openHabMqttport)
         {
+            HALIB_DEVICE_DEBUG_MSG("Setup\n");
             m_MqttClient.setClient(pEthClient);
             m_MqttClient.setServer(openHabMqttUrl, openHabMqttport);
 
@@ -43,6 +48,7 @@ namespace HALIB_NAMESPACE
             m_openHabMqttport = openHabMqttport;
 
             m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length) { this->onMQTTMessage(topic, payload, length); });
+            HALIB_DEVICE_DEBUG_MSG("SetupEND\n");
         };
 
         
@@ -65,7 +71,7 @@ namespace HALIB_NAMESPACE
                         //m_MqttClient.loop();
                         if (connectMQTTServer())
                         {
-                            DEBUG_PRINTLN("=> mqtt now connected");
+                            HALIB_DEVICE_DEBUG_MSG("=> mqtt now connected\n");
                             sendAvailability(true);
                             m_pNode->onHAConnect();
                         }
@@ -92,10 +98,12 @@ namespace HALIB_NAMESPACE
         }
         void addComponent(HAComponent *p_pComponent)
         {
+            HALIB_DEVICE_DEBUG_MSG("addComponent\n");
             m_pNode->addComponent(p_pComponent);
             if(m_PreviousWifiStatus==WL_CONNECTED){
                 p_pComponent->_onHAConnect();
             }
+            HALIB_DEVICE_DEBUG_MSG("addComponentEND\n");
         }
     private:
 #ifdef UNIT_TEST
@@ -110,7 +118,7 @@ namespace HALIB_NAMESPACE
         
         void onMQTTMessage(char *topic, unsigned char *payload, unsigned int length)
         {
-            //DEBUG_PRINTLN("onMQTTMessage");
+            HALIB_DEVICE_DEBUG_MSG("onMQTTMessage\n");
             m_pNode->onHAMessage(topic, payload, length);
         }
 
@@ -119,38 +127,28 @@ namespace HALIB_NAMESPACE
             uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
             const char *nodeName = m_pNode->getName();
 
-            //DEBUG_PRINTLN("mqtt connecting with :");
+            HALIB_DEVICE_DEBUG_MSG("mqtt connecting with :\n");
             // <node_name>-identifier
             int deviceIdLength = strlen(nodeName) + 1 + 8 + 1;
             char *deviceId = (char *)calloc(deviceIdLength, sizeof(char));
             // apply template
             sprintf_P(deviceId, DEVICEIDENTIFIER_TEMPALTE, nodeName, identifier);
-            //DEBUG_PRINT("deviceId:");
-            //DEBUG_PRINT(deviceId);
-            //DEBUG_PRINTLN("");
-
+            HALIB_DEVICE_DEBUG_MSG("deviceId: %s\n",deviceId);
+            
             const char *willTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
-            ;
+            
             uint8_t willQos = 0;
             boolean willRetain = true;
             const char *willMessage = m_pNode->getProperty(PROP_PAYLOAD_NOT_AVAILABLE);
-            // DEBUG_PRINT("willTopic:");
-            // DEBUG_PRINT(willTopic);
-            // DEBUG_PRINTLN("");
-            // DEBUG_PRINT("willQos:");
-            // DEBUG_PRINTLN_DEC(willQos);
-            // DEBUG_PRINT("willRetain:");
-            // DEBUG_PRINT(willRetain ? "TRUE" : "FALSE");
-            // DEBUG_PRINTLN("");
-            // DEBUG_PRINT("willMessage:");
-            // DEBUG_PRINT(willMessage);
-            // DEBUG_PRINTLN("");
+            HALIB_DEVICE_DEBUG_MSG("willTopic: %s\n",willTopic);
+            HALIB_DEVICE_DEBUG_MSG("willQos: %d\n",willQos);
+            HALIB_DEVICE_DEBUG_MSG("willRetain: %s\n", (willRetain)?"TRUE":"FALSE");
+            HALIB_DEVICE_DEBUG_MSG("willMessage: %s\n",willMessage);
 
             bool status = m_MqttClient.connect(deviceId, willTopic, willQos, willRetain, willMessage);
             //@todo login/password will message
 
-            // DEBUG_PRINT(" mqtt connection status = ");
-            // DEBUG_PRINTLN(status);
+            HALIB_DEVICE_DEBUG_MSG("mqtt connection status: %s\n",status);
 
             free(deviceId);
 
@@ -158,14 +156,12 @@ namespace HALIB_NAMESPACE
         }
         bool postMessage(HAMessage *message)
         {
+            HALIB_DEVICE_DEBUG_MSG("postMessage\n");
             const char *offset = message->getMessage();
             const char* topic = message->getTopic();
 
-        size_t messageLength = strlen(offset);
-            // DEBUG_PRINT("postMessage ");
-            // DEBUG_PRINT(messageLength);
-            // DEBUG_PRINT(" ");
-            // DEBUG_PRINTLN(offset);
+            size_t messageLength = strlen(offset);
+            // DEBUG_PRINT("postMessage messageLength(%d) offset(%s)\n",messageLength,offset);
             
             boolean success = false;
 
@@ -198,6 +194,7 @@ namespace HALIB_NAMESPACE
                 success = m_MqttClient.publish(topic, offset);
             }
 
+            HALIB_DEVICE_DEBUG_MSG("postMessageEND (%s)\n",success?"true","false");
             return success;
         }
         bool subscribeTopic(HASubscribCmd *p_pCmd)
@@ -205,14 +202,12 @@ namespace HALIB_NAMESPACE
             boolean success = false;
             if (p_pCmd->isSubscribtion())
             {
-                // DEBUG_PRINT("Subscription to ");
-                // DEBUG_PRINTLN(p_pCmd->getTopic());
+                HALIB_DEVICE_DEBUG_MSG("Subscription to %s\n",p_pCmd->getTopic());
                 success = m_MqttClient.subscribe(p_pCmd->getTopic());
             }
             else
             {
-                // DEBUG_PRINT("Unsubscription to ");
-                // DEBUG_PRINTLN(p_pCmd->getTopic());
+                HALIB_DEVICE_DEBUG_MSG("Unsubscription to %s\n",p_pCmd->getTopic());
                 success = m_MqttClient.unsubscribe(p_pCmd->getTopic());
             }
             return success;
@@ -229,7 +224,8 @@ namespace HALIB_NAMESPACE
         }
         bool treatAction(HAAction *l_pCmd)
         {
-            //DEBUG_PRINTLN("treatActions");
+            boolean success = false;
+            HALIB_DEVICE_DEBUG_MSG("treatAction\n");
             
             if (NULL != l_pCmd)
             {
@@ -261,22 +257,20 @@ namespace HALIB_NAMESPACE
                         delete l_pCmd;
                     }
                 }
-                return true;
+                success = true;
             }
-            else
-            {
-                return false;
-            }
+
+            HALIB_DEVICE_DEBUG_MSG("treatActionEND (%s)\n":success?"true":"false");
+            return success;
         }
         bool sendAvailability(boolean available)
         {
             const char *availabilityTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
             const char *availabilityMessage = m_pNode->getProperty(available ? PROP_PAYLOAD_AVAILABLE : PROP_PAYLOAD_NOT_AVAILABLE);
-            // DEBUG_PRINT("Topic:");DEBUG_PRINT(availabilityTopic);DEBUG_PRINTLN("");
-            // DEBUG_PRINT("Message:");DEBUG_PRINT(availabilityMessage);DEBUG_PRINTLN("");
+            HALIB_DEVICE_DEBUG_MSG('sendAvailability\nTopic: %s\nMessage:%s\n',availabilityTopic,availabilityMessage);
             // DEBUG_PRINTLN_DEC(MQTT_MAX_PACKET_SIZE);
             m_MqttClient.publish(availabilityTopic, availabilityMessage, true);
-            // DEBUG_PRINTLN("Availability sent");
+            HALIB_DEVICE_DEBUG_MSG('sendAvailabilityEND\n');
             return true;
         }
 

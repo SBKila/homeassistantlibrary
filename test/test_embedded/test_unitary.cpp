@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <unity.h>
 
-#include <HALib.h>
+#include "HALib/HALib.h"
 
 using namespace HALIB_NAMESPACE;
 void UT_LinkedList(void)
