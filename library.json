@@ -1,6 +1,6 @@
 {
   "name": "HomeAssistantLibray",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Library to manage HomeAssistant protocol",
   "keywords": "ESP8266,HomeAssistant",
   "repository": {
@@ -16,7 +16,12 @@
   ],
   "license": "MIT",
   "homepage": "https://github.com/SBKila/homeassistantlibrary",
-  "dependencies": {},
+  "dependencies":
+    {
+      "bblanchon/ArduinoJson": "^6.17.1",
+      "knolleary/PubSubClient": "^2.8",
+      "evert-arias/EasyButton": "^2.0.1"
+    },
   "frameworks": "*",
   "platforms": "espressif8266"
 }
