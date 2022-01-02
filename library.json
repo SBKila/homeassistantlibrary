@@ -1,5 +1,5 @@
 {
-  "name": "HomeAssistantLibray",
+  "name": "HomeAssistantLibrary",
   "version": "0.1.2",
   "description": "Library to manage HomeAssistant protocol",
   "keywords": "ESP8266,HomeAssistant",
