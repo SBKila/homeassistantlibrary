@@ -50,7 +50,9 @@ namespace HALIB_NAMESPACE
             m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length) { this->onMQTTMessage(topic, payload, length); });
             HALIB_DEVICE_DEBUG_MSG("SetupEND\n");
         };
-
+        bool isMqttconnected(){
+            return m_MqttClient.connected();
+        }
         
 
         void loop(wl_status_t wifiStatus)
