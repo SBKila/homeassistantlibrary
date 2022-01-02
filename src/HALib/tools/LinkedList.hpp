@@ -30,9 +30,9 @@ namespace HALIB_NAMESPACE
         int find(T, bool);
         /*
 		append a T object in the end of the LinkedList;
-	*/
+	    */
         virtual bool append(T);
-        virtual bool remove(T, bool);
+        virtual bool remove(T, bool = false);
 
         // shift() will remove and return the FIRST element
         T shift();
@@ -141,9 +141,8 @@ namespace HALIB_NAMESPACE
         }
         return data;
     }
-
     template <typename T>
-    bool LinkedList<T>::remove(T _t, bool isPointerData = false)
+    bool LinkedList<T>::remove(T _t, bool isPointerData)
     {
         LinkedListNode<T> *tmp = root;
         LinkedListNode<T> *prev = NULL;

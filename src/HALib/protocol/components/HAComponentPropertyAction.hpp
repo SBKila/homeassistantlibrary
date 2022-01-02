@@ -8,7 +8,7 @@ namespace HALIB_NAMESPACE
     class HAComponentPropertyAction : public HAComponentProperty
     {
     public:
-        HAComponentPropertyAction(HAComponentPropertyKey name, const T callback, const char *value);
+        HAComponentPropertyAction(HAComponentPropertyKey name, const T callback, const char *value = NULL);
         T getCallback();
 
     protected:
@@ -17,7 +17,7 @@ namespace HALIB_NAMESPACE
     };
 
     template <typename T>
-    HAComponentPropertyAction<T>::HAComponentPropertyAction(HAComponentPropertyKey name, const T callback, const char *value = NULL) : HAComponentProperty(name, value)
+    HAComponentPropertyAction<T>::HAComponentPropertyAction(HAComponentPropertyKey name, const T callback, const char *value) : HAComponentProperty(name, value)
     {
         mCallback = callback;
     }
