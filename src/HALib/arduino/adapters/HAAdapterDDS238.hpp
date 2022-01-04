@@ -146,8 +146,6 @@ namespace HALIB_NAMESPACE
                     m_LastTickDeltaTime = deltaT;
                 }
                 m_LastTickTreatedTime = tickTime;
-                // just for blink led no data store as far data not changed
-                m_PersistenceFunction(m_Persistent);
             }
             else
             {
