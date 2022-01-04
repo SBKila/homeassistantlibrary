@@ -75,10 +75,13 @@ namespace HALIB_NAMESPACE
                         {
                             HALIB_DEVICE_DEBUG_MSG("=> mqtt now connected\n");
                             sendAvailability(true);
-                            m_pNode->onHAConnect();
+                            m_PreviousOpenHabMqttStatus = WL_CONNECTED;
+                            m_pNode->onHAConnect(true);
                         }
                         else
                         { // unable to connect mqtt server
+                            m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
+                            m_pNode->onHAConnect(false);
                             /* @todo error management back to setup mode ?*/
                         }
                     }
@@ -102,7 +105,7 @@ namespace HALIB_NAMESPACE
         {
             HALIB_DEVICE_DEBUG_MSG("addComponent\n");
             m_pNode->addComponent(p_pComponent);
-            if(m_PreviousWifiStatus==WL_CONNECTED){
+            if(m_PreviousOpenHabMqttStatus==WL_CONNECTED){
                 p_pComponent->_onHAConnect();
             }
             HALIB_DEVICE_DEBUG_MSG("addComponentEND\n");
