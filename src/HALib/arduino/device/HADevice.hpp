@@ -121,10 +121,11 @@ namespace HALIB_NAMESPACE
                             {
                                 HALIB_DEVICE_DEBUG_MSG("=> mqtt now connected\n");
                                 sendAvailability(true);
-                                m_pNode->onHAConnect();
+                                m_pNode->onHAConnect(true);
                             }
                             else
                             { // unable to connect mqtt server
+                                m_pNode->onHAConnect(false);
                                 /* @todo error management back to setup mode ?*/
                             }
                         }
@@ -132,13 +133,13 @@ namespace HALIB_NAMESPACE
                     else
                     { // mqtt still connected
                         // DEBUG_PRINTLN("=> mqtt connected");
-                        // m_MqttClient.loop();
                         lastConnect=millis();
                         treatActions();
                     }
+                    // if new component added, resent OnConnect
                     if(NULL != m_pRecentltyAddedComponent)
                     {
-                        getNode()->onHAConnect();
+                        getNode()->onHAConnect(true);
                         m_pRecentltyAddedComponent = NULL;
                     }
                     m_MqttClient.loop();
