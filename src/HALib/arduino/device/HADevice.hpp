@@ -47,7 +47,7 @@ namespace HALIB_NAMESPACE
             HALIB_DEVICE_DEBUG_MSG("DestructorEND\n");
         };
 
-        void setup(Client &pEthClient, const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin, const char *brokerMqttPwd)
+        void setup(Client &pEthClient, const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin = NULL, const char *brokerMqttPwd = NULL)
         {
             HALIB_DEVICE_DEBUG_MSG("Setup\n");
             m_MqttClient.setClient(pEthClient);

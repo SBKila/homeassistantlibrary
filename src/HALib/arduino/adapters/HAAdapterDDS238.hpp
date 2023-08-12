@@ -293,24 +293,25 @@ namespace HALIB_NAMESPACE
             return object;
         }
 
-        //         static const char htmlDebugPatern[] PROGMEM = "\
-// <div><div>Ticks <span>Total:%lu </span>\
-// <span>Current:%d </span>\
-// <span>ToShort:%d </span>\
-// <span>ToClose:%d </span>\
-// </div><div>Duration \
-// <span>Last:%d </span>\
-// <span>Average:%.2f </span>\
-// <span>Since last:%lu </span>\
-// </div><div>Power\
-// <span>instant:%.2f </span>\
-// <span>Tick/TenthKW:%d </span>\
-// </div><div>\
-// state:%s\
-// </div><div>\
-// minDuration=%u\
-// </div>";
-
+/*
+static const char htmlDebugPatern[] PROGMEM = "\
+<div><div>Ticks <span>Total:%lu </span>\
+<span>Current:%d </span>\
+<span>ToShort:%d </span>\
+<span>ToClose:%d </span>\
+</div><div>Duration \
+<span>Last:%d </span>\
+<span>Average:%.2f </span>\
+<span>Since last:%lu </span>\
+</div><div>Power\
+<span>instant:%.2f </span>\
+<span>Tick/TenthKW:%d </span>\
+</div><div>\
+state:%s\
+</div><div>\
+minDuration=%u\
+ </div>";
+*/
         //         void toHtmlDebug(char *output)
         //         {
         //             sprintf_P(output, htmlDebugPatern,
