@@ -42,14 +42,16 @@ namespace HALIB_NAMESPACE
             // Setup HA sensor for cumulative power
             strcpy(buffer, name);
             strcat(buffer, "_cumulat");
-            m_pCumulaticComponent = new HAComponentSensor(buffer, DC_POWER, false);
-            m_pCumulaticComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kW");
+            m_pCumulaticComponent = new HAComponentSensor(buffer,DC_ENERGY, false);
+            m_pCumulaticComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
+            m_pCumulaticComponent->addProperty(PROP_STATE_CLASS, "total_increasing");
 
             // Setup HA sensor for instant power
             strcpy(buffer, name);
             strcat(buffer, "_instant");
-            m_pInstantComponent = new HAComponentSensor(buffer, DC_POWER, false);
-            m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kW");
+            m_pInstantComponent = new HAComponentSensor(buffer, DC_ENERGY, false);
+            m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
+            m_pInstantComponent->addProperty(PROP_STATE_CLASS, "measurement");
 
             free(buffer);
 
@@ -86,6 +88,9 @@ namespace HALIB_NAMESPACE
                 debugTotalTicks = 0;
                 debugToShort = 0;
                 debugToShortDelay = 0;
+            } else {
+                // persist cumulative power
+                m_PersistenceFunction(m_Persistent);
             }
         }
         virtual void loop()
@@ -146,6 +151,8 @@ namespace HALIB_NAMESPACE
                     m_LastTickDeltaTime = deltaT;
                 }
                 m_LastTickTreatedTime = tickTime;
+                // just for blink led no data store as far data not changed
+                m_PersistenceFunction(m_Persistent);
             }
             else
             {
