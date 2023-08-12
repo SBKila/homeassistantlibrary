@@ -21,7 +21,7 @@ namespace HALIB_NAMESPACE
             mWifi = &WiFi;
             m_pNode = new HANode(pDeviceName);
             m_pNode->setDeviceInfo(pManuf, pModel, pRelease);
-            m_openHabMqttUrl = NULL;
+            m_brokerMqttUrl = NULL;
             HALIB_DEVICE_DEBUG_MSG("ConstructorEND\n");
         };
         ~HADevice()
@@ -29,23 +29,23 @@ namespace HALIB_NAMESPACE
             HALIB_DEVICE_DEBUG_MSG("Destructor\n");
             delete m_pNode;
 
-            if (NULL != m_openHabMqttUrl)
+            if (NULL != m_brokerMqttUrl)
             {
-                free(m_openHabMqttUrl);
+                free(m_brokerMqttUrl);
             }
 
             HAUtils::deleteProperties(mProperties);
             HALIB_DEVICE_DEBUG_MSG("DestructorEND\n");
         };
 
-        void setup(Client &pEthClient, const char *openHabMqttUrl, const int openHabMqttport)
+        void setup(Client &pEthClient, const char *mqttUrl, const int mqttport)
         {
             HALIB_DEVICE_DEBUG_MSG("Setup\n");
             m_MqttClient.setClient(pEthClient);
-            m_MqttClient.setServer(openHabMqttUrl, openHabMqttport);
+            m_MqttClient.setServer(mqttUrl, mqttport);
 
-            m_openHabMqttUrl = strdup(openHabMqttUrl);
-            m_openHabMqttport = openHabMqttport;
+            m_brokerMqttUrl = strdup(mqttUrl);
+            m_brokerMqttport = mqttport;
 
             m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length) { this->onMQTTMessage(topic, payload, length); });
             HALIB_DEVICE_DEBUG_MSG("SetupEND\n");
@@ -75,12 +75,12 @@ namespace HALIB_NAMESPACE
                         {
                             HALIB_DEVICE_DEBUG_MSG("=> mqtt now connected\n");
                             sendAvailability(true);
-                            m_PreviousOpenHabMqttStatus = WL_CONNECTED;
+                            m_PreviousMqttStatus = WL_CONNECTED;
                             m_pNode->onHAConnect(true);
                         }
                         else
                         { // unable to connect mqtt server
-                            m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
+                            m_PreviousMqttStatus = WL_DISCONNECTED;
                             m_pNode->onHAConnect(false);
                             /* @todo error management back to setup mode ?*/
                         }
@@ -105,7 +105,7 @@ namespace HALIB_NAMESPACE
         {
             HALIB_DEVICE_DEBUG_MSG("addComponent\n");
             m_pNode->addComponent(p_pComponent);
-            if(m_PreviousOpenHabMqttStatus==WL_CONNECTED){
+            if(m_PreviousMqttStatus==WL_CONNECTED){
                 p_pComponent->_onHAConnect();
             }
             HALIB_DEVICE_DEBUG_MSG("addComponentEND\n");
@@ -117,7 +117,7 @@ namespace HALIB_NAMESPACE
         PubSubClient m_MqttClient;
         HANode *m_pNode;
         wl_status_t m_PreviousWifiStatus = WL_DISCONNECTED;
-        wl_status_t m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
+        wl_status_t m_PreviousMqttStatus = WL_DISCONNECTED;
         ESP8266WiFiClass *mWifi = &WiFi;
 
         
@@ -278,8 +278,8 @@ namespace HALIB_NAMESPACE
             return true;
         }
 
-        char *m_openHabMqttUrl;
-        int m_openHabMqttport;
+        char *m_brokerMqttUrl;
+        int m_brokerMqttport;
         LinkedList<HAComponentProperty *> mProperties;
     };
 } // namespace HALIB_NAMESPACE
