@@ -191,6 +191,7 @@ namespace HALIB_NAMESPACE
     const char PROP_VALUE_XY_VALUE_TEMPLATE[] PROGMEM = "xy_val_tpl";
     const char PROP_VALUE_TYPE[] PROGMEM = "type";
     const char PROP_VALUE_STYPE[] PROGMEM = "stype";
+    const char PROP_VALUE_STATE_CLASS[] PROGMEM = "state_class";
 
     // extern PGM_P DiscoveryMessageKeyLabel[] PROGMEM;
     PGM_P DiscoveryMessageKeyLabel[] PROGMEM =
@@ -379,7 +380,8 @@ namespace HALIB_NAMESPACE
             PROP_VALUE_XY_STATE_TOPIC,
             PROP_VALUE_XY_VALUE_TEMPLATE,
             PROP_VALUE_TYPE,
-            PROP_VALUE_STYPE};
+            PROP_VALUE_STYPE,
+            PROP_VALUE_STATE_CLASS};
 
     const static char DEFAULT_VALUE_EMPTY[] PROGMEM = "";
     const static char DEFAULT_VALUE_ROOT_TOPIC[] PROGMEM = "";
@@ -567,6 +569,7 @@ namespace HALIB_NAMESPACE
     const static char DEFAULT_VALUE_XY_VALUE_TEMPLATE[] PROGMEM = "";
     const static char DEFAULT_VALUE_TYPE[] PROGMEM = "";
     const static char DEFAULT_VALUE_STYPE[] PROGMEM = "";
+    const static char DEFAULT_VALUE_STATE_CLASS[] PROGMEM = "";
 
     // PGM_P PropertyDefaultValue[] PROGMEM = {};
     PGM_P PropertyDefaultValue[] PROGMEM =
@@ -755,7 +758,8 @@ namespace HALIB_NAMESPACE
             DEFAULT_VALUE_XY_STATE_TOPIC,
             DEFAULT_VALUE_XY_VALUE_TEMPLATE,
             DEFAULT_VALUE_TYPE,
-            DEFAULT_VALUE_STYPE};
+            DEFAULT_VALUE_STYPE,
+            DEFAULT_VALUE_STATE_CLASS};
 
     enum HAComponentPropertyKey
     {
@@ -943,6 +947,7 @@ namespace HALIB_NAMESPACE
         PROP_XY_STATE_TOPIC,
         PROP_XY_VALUE_TEMPLATE,
         PROP_TYPE,
-        PROP_STYPE
+        PROP_STYPE,
+        PROP_STATE_CLASS
     };
 } // namespace HALIB_NAMESPACE
