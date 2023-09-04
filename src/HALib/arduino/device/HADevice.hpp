@@ -50,12 +50,17 @@ namespace HALIB_NAMESPACE
         void setup(Client &pEthClient, const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin = NULL, const char *brokerMqttPwd = NULL)
         {
             HALIB_DEVICE_DEBUG_MSG("Setup\n");
+
+            // disconnect before changing settings 
+            if(m_MqttClient.connected()){
+                m_MqttClient.disconnect();
+            }
+
             m_MqttClient.setClient(pEthClient);
             
             m_MqttClient.setServer(brokerMqttUrl, brokerMqttPort);
             HALIB_DEVICE_DEBUG_MSG("MQtt Domain: %s\n", brokerMqttUrl);
             HALIB_DEVICE_DEBUG_MSG("MQtt Port: %d\n", brokerMqttPort);
-            
 
             setMqttUser(brokerMqttLogin);
             setMqttPassword(brokerMqttPwd);
