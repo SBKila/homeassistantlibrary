@@ -118,7 +118,7 @@ namespace HALIB_NAMESPACE
                         
                         // m_MqttClient.loop();
                         unsigned long delta = millis() - lastConnect;
-                        
+                        //HALIB_DEVICE_DEBUG_MSG("=> mqtt not connected since %d\n", delta);
                         if ((delta > 10000))
                         {
                             // HALIB_DEVICE_DEBUG_MSG("%d\n", delta);
@@ -342,7 +342,9 @@ namespace HALIB_NAMESPACE
         {
             const char *availabilityTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
             const char *availabilityMessage = m_pNode->getProperty(available ? PROP_PAYLOAD_AVAILABLE : PROP_PAYLOAD_NOT_AVAILABLE);
-            HALIB_DEVICE_DEBUG_MSG("sendAvailability\nTopic: %s\nMessage: %s\n", availabilityTopic, availabilityMessage);
+            HALIB_DEVICE_DEBUG_MSG("sendAvailability\n");
+            HALIB_DEVICE_DEBUG_MSG("Topic: %s\n", availabilityTopic, availabilityMessage);
+            HALIB_DEVICE_DEBUG_MSG("Message: %s\n", availabilityMessage);
             // DEBUG_PRINTLN_DEC(MQTT_MAX_PACKET_SIZE);
             m_MqttClient.publish(availabilityTopic, availabilityMessage, true);
             HALIB_DEVICE_DEBUG_MSG("sendAvailabilityEND\n");
