@@ -60,20 +60,20 @@ namespace HALIB_NAMESPACE
             // DEBUG_PRINT(m_pComponent->getName());
             m_pComponent->trigEvent();
         }
-        virtual JsonObject toJson()
-        {        {
-            const size_t capacity = JSON_OBJECT_SIZE(5);
-            StaticJsonDocument<capacity> doc;
-            JsonObject object = doc.to<JsonObject>();
+        // virtual JsonObject toJson()
+        // {        {
+        //     const size_t capacity = JSON_OBJECT_SIZE(5);
+        //     StaticJsonDocument<capacity> doc;
+        //     JsonObject object = doc.to<JsonObject>();
 
-            object["type"] = "PushButton";
-            object["name"] = m_Name;
-            object["ref"] = m_IOReference;
+        //     object["type"] = "PushButton";
+        //     object["name"] = m_Name;
+        //     object["ref"] = m_IOReference;
 
-            return object;
-        }
+        //     return object;
+        // }
 
-        }
+        // }
         //void onHAConnect();
 
         virtual void setDevice(HADevice *p_pDevice)

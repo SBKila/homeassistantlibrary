@@ -17,6 +17,8 @@ namespace HALIB_NAMESPACE
     const char type_10[] PROGMEM = "switch";
     const char type_11[] PROGMEM = "vacuum";
     const char type_12[] PROGMEM = "device_automation";
+    const char type_13[] PROGMEM = "number";
+    
 
     // extern PGM_P componentTypeTag[] PROGMEM;
     PGM_P componentTypeTag[] PROGMEM =
@@ -33,7 +35,9 @@ namespace HALIB_NAMESPACE
             type_9,
             type_10,
             type_11,
-            type_12};
+            type_12,
+            type_13
+        };
 
     enum ComponentType
     {
@@ -49,6 +53,7 @@ namespace HALIB_NAMESPACE
         SENSOR,
         SWITCH,
         VACUUM,
-        DEVICE_TRIGGER
+        DEVICE_TRIGGER,
+        NUMBER
     };
 } // namespace HALIB_NAMESPACE

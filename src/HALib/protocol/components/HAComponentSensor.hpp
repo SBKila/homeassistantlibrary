@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include "HAComponent.hpp"
 
-
 namespace HALIB_NAMESPACE
 {
 
@@ -27,8 +26,11 @@ namespace HALIB_NAMESPACE
         }
         void setValue(float value)
         {
-            m_value = value;
-            publishState();
+            if (m_value != value)
+            {
+                m_value = value;
+                publishState();
+            }
         }
 
     protected:
@@ -45,7 +47,7 @@ namespace HALIB_NAMESPACE
             }
             else
             {
-                DEBUG_PRINTLN("Node not configured");
+                HALIB_COMPONENT_DEBUG_MSG("Node not configured\n");
             }
         };
 

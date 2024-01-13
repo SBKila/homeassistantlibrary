@@ -67,20 +67,25 @@ namespace HALIB_NAMESPACE
 
         virtual void setNode(IHANode *pNnode)
         {
-            m_pNode = pNnode;
-            char *rootTopic = buildRootTopic(m_pNode->getName());
-            addProperty(PROP_ROOT_TOPIC, rootTopic);
-
-            for (int index = 0; index < mActions.getSize(); index++)
-            {
-                HAComponentProperty *pComponentProperty = (HAComponentProperty *)mActions.get(index);
-                char topic[getTopicPath(pComponentProperty->getValue()) + 1];
-                getTopicPath(pComponentProperty->getValue(), topic);
-
-                m_pNode->registerToHA(topic);
+            if(NULL != m_pNode){
+             // @TODO unregister HA
             }
+            if(NULL != pNnode){
+                m_pNode = pNnode;
+                char *rootTopic = buildRootTopic(m_pNode->getName());
+                addProperty(PROP_ROOT_TOPIC, rootTopic);
 
-            delete rootTopic;
+                for (int index = 0; index < mActions.getSize(); index++)
+                {
+                    HAComponentProperty *pComponentProperty = (HAComponentProperty *)mActions.get(index);
+                    char topic[getTopicPath(pComponentProperty->getValue()) + 1];
+                    getTopicPath(pComponentProperty->getValue(), topic);
+
+                    m_pNode->registerToHA(topic);
+                }
+
+                delete rootTopic;
+            }
         }
         virtual char *buildDiscoveryTopic(const char *pDiscoveryPrefix, const char *pNodeId = NULL)
         {

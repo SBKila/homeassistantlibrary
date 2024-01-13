@@ -1,3 +1,6 @@
 {
-    "python.pythonPath": "C:\\Users\\steph\\.platformio\\python37\\python.exe"
+    "python.pythonPath": "C:\\Users\\steph\\.platformio\\python37\\python.exe",
+    "files.associations": {
+        "system_error": "cpp"
+    }
 }

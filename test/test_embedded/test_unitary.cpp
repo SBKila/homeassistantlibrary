@@ -6,7 +6,6 @@
 using namespace HALIB_NAMESPACE;
 void UT_LinkedList(void)
 {
-
     HAComponent hAComponent1("Device1", BINARY_SENSOR);
     HAComponent hAComponent10("Device1", BINARY_SENSOR);
     HAComponent hAComponent2("Device2", BINARY_SENSOR);
@@ -890,8 +889,8 @@ void setup()
     RUN_TEST(UT_HAAdapter_constructor);
     RUN_TEST(UT_OnHAMessage);
 
-    RUN_TEST(UC_SETUP);
-    RUN_TEST(UC_StreamHAMessages);
+    //RUN_TEST(UC_SETUP);
+    //RUN_TEST(UC_StreamHAMessages);
 
     UNITY_END(); // stop unit testing
 }

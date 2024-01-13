@@ -1,6 +1,5 @@
 #pragma once
 
-#include <arduinoJson.h>
 #include "../device/HADevice.hpp"
 #include "HAAdapter.hpp"
 

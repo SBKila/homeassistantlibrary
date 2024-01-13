@@ -1,0 +1,26 @@
+@startuml
+class HADevice {
+HANode m_pNode
+PubSubClient m_MqttClient
+void loop()
+}
+class HANode implements IHANode {
+    IHAComponent[] mComponents
+}
+interface IHANode {
+    const char* getName()
+    void addComponent()
+    void registerToHA()
+    void postMessage(const char *pTopic, const char *pMessage, boolean retain)
+    void postDiscoveryMessage(IHAComponent *p_pComponent)
+    void registerToHA(const char *topic, boolean subscription = true)
+    bool onHAMessage(const char *topic, const byte *payload, const unsigned int length)
+    void retryAction(HAAction* p_pAction)
+}
+interface IHAComponent {
+
+}
+
+HADevice *-- HANode
+HANode o- IHAComponent
+@enduml

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <arduinoJson.h>
 #include "HAAdapter.hpp"
 #include "../../protocol/components/HAComponentSensor.hpp"
 
@@ -10,9 +9,9 @@ namespace HALIB_NAMESPACE
 {
     struct DDS238Data
     {
-        int tag;
-        uint ticks;
-        float cumulative;
+        int tag=0;
+        uint ticks=0;
+        float cumulative=0;
     };
 
     class HAAdapterDDS238 : public HAAdapter
@@ -20,6 +19,7 @@ namespace HALIB_NAMESPACE
     public:
         HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction) : HAAdapter(name, ioReference)
         {
+            HALIB_ADAPTER_DEBUG_MSG("Constructor\n");
 
             m_TickByTenthKW = tickByKW / 10;
             m_PersistenceFunction = persistentFunction;
@@ -32,9 +32,11 @@ namespace HALIB_NAMESPACE
             m_VolatileTickTime = 0;
             m_VolatileInterupDownTime = 0;
             m_VolatileTicks = 0;
-            debugToShortDelay = 0;
+            // debugToShortDelay = 0;
             m_VolatileState = HIGH;
             m_VolatileAverageTickDuration = 0;
+
+            m_pDevice=NULL;
 
             size_t nameLength = strlen(name);
             char *buffer = (char *)calloc(nameLength + 8 + 1, sizeof(char));
@@ -49,8 +51,8 @@ namespace HALIB_NAMESPACE
             // Setup HA sensor for instant power
             strcpy(buffer, name);
             strcat(buffer, "_instant");
-            m_pInstantComponent = new HAComponentSensor(buffer, DC_ENERGY, false);
-            m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
+            m_pInstantComponent = new HAComponentSensor(buffer, DC_POWER, false);
+            m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kW");
             m_pInstantComponent->addProperty(PROP_STATE_CLASS, "measurement");
 
             free(buffer);
@@ -58,25 +60,43 @@ namespace HALIB_NAMESPACE
             m_InstantFactor = 3600000 / tickByKW;
             m_MinDuration = 3600000. / ((voltage * maxAmp) * (1000. / tickByKW));
 
-            debugTotalTicks = 0;
-            debugToShort = 0;
-            debugLastTickDuration = 0;
+            //debugTotalTicks = 0;
+            // debugToShort = 0;
+            // debugLastTickDuration = 0;
+            HALIB_ADAPTER_DEBUG_MSG("ConstructorEND\n");
         }
         virtual ~HAAdapterDDS238()
         {
             suspend(true);
 
+            m_Persistent.tag=0;
+            m_PersistenceFunction(m_Persistent);
+
+            if(m_pDevice!=NULL){
+                m_pDevice->removeComponent(m_pCumulaticComponent);    
+                m_pDevice->removeComponent(m_pInstantComponent);
+            }
             delete m_pCumulaticComponent;
             delete m_pInstantComponent;
         }
         virtual void setDevice(HADevice *p_pDevice)
         {
-            p_pDevice->addComponent(m_pCumulaticComponent);
-            p_pDevice->addComponent(m_pInstantComponent);
+            HALIB_ADAPTER_DEBUG_MSG("setDevice\n");
+            if(m_pDevice!=NULL){
+                HALIB_ADAPTER_DEBUG_MSG("setDevice1\n");
+                m_pDevice->removeComponent(m_pCumulaticComponent);    
+                m_pDevice->removeComponent(m_pInstantComponent);
+            }
+            HALIB_ADAPTER_DEBUG_MSG("setDevice2\n");
+            m_pDevice = p_pDevice;
+            m_pDevice->addComponent(m_pCumulaticComponent);
+            m_pDevice->addComponent(m_pInstantComponent);
+            HALIB_ADAPTER_DEBUG_MSG("setDeviceEND\n");
         }
 
         virtual void restore(DDS238Data persistence)
         {
+            HALIB_ADAPTER_DEBUG_MSG("restore\n");
             // restore only if value ok
             if (persistence.tag == 963)
             {
@@ -85,13 +105,14 @@ namespace HALIB_NAMESPACE
                 // send value to MQTT
                 m_pCumulaticComponent->setValue(m_Persistent.cumulative / 10);
 
-                debugTotalTicks = 0;
-                debugToShort = 0;
-                debugToShortDelay = 0;
+                //debugTotalTicks = 0;
+                // debugToShort = 0;
+                // debugToShortDelay = 0;
             } else {
                 // persist cumulative power
                 m_PersistenceFunction(m_Persistent);
             }
+            HALIB_ADAPTER_DEBUG_MSG("restoreEND\n");
         }
         virtual void loop()
         {
@@ -122,7 +143,7 @@ namespace HALIB_NAMESPACE
                     m_pCumulaticComponent->setValue(m_Persistent.cumulative / 10);
 
                     // persist cumulative power
-                    m_PersistenceFunction(m_Persistent);
+                    //m_PersistenceFunction(m_Persistent);
                 }
 
                 // Instant power management
@@ -146,12 +167,16 @@ namespace HALIB_NAMESPACE
                     if (deltaT > 0)
                     {
                         m_InstantPower = nbTick * m_InstantFactor / deltaT;
-                        m_pInstantComponent->setValue(m_InstantPower);
+                        float rounded = (floorf(10*m_InstantPower))/10;
+                        
+                        // on HA only transfert number with 1 decimal 
+                        m_pInstantComponent->setValue(rounded);
                     }
                     m_LastTickDeltaTime = deltaT;
                 }
+                
                 m_LastTickTreatedTime = tickTime;
-                // just for blink led no data store as far data not changed
+                // store data at each ticks 
                 m_PersistenceFunction(m_Persistent);
             }
             else
@@ -181,7 +206,7 @@ namespace HALIB_NAMESPACE
             else
             {
                 attachInterrupt(
-                    digitalPinToInterrupt(m_IOReference), [this]() {
+                    digitalPinToInterrupt(m_IOReference), [this]()ICACHE_RAM_ATTR{
                         noInterrupts();
                         this->onTick();
                         interrupts();
@@ -190,6 +215,16 @@ namespace HALIB_NAMESPACE
             }
         }
 
+        /*
+        * -----------       -------------------------
+        *           |       |
+        *           |       |
+        *           ---------
+        *             Tick
+        * 
+        *
+        */
+             
         virtual void onTick()
         {
             unsigned long now = millis();
@@ -199,67 +234,70 @@ namespace HALIB_NAMESPACE
             if (HIGH == m_VolatileState)
             {
                 // Raising use case
-
-                if (0 != m_VolatileInterupDownTime) // if previous did failling taken in account
+                if (0 != m_VolatileInterupDownTime) // if previous dio failling taken in account
                 {
                     unsigned long delta = now - m_VolatileInterupDownTime;
-                    debugLastTickDuration = delta;
+                    // debugLastTickDuration = delta;
 
                     if (delta >= 30) // duration min is 30ms According to EN 62053-31
-                    {
-                        // this signal should be taken in acount
-                        if (m_VolatileAverageTickDuration == 0)
-                        {
-                            m_VolatileAverageTickDuration = delta;
-                        }
-                        else
-                        {
-                            m_VolatileAverageTickDuration = (m_VolatileAverageTickDuration + delta) / 2;
-                        }
-
+                    {   // this signal should be taken in acount
                         m_VolatileTicks++;
                         m_VolatileTickTime = now;
-                        debugTotalTicks++;
-                    }
-                    else
-                    {
-                        debugToShort++;
-                    }
+                     
+                     
+                        // if (m_VolatileAverageTickDuration == 0)
+                        // {
+                        //     m_VolatileAverageTickDuration = delta;
+                        // }
+                        // else
+                        // {
+                        //     m_VolatileAverageTickDuration = (m_VolatileAverageTickDuration + delta) / 2;
+                        // }
 
-                    // ignore this tick
+                        //debugTotalTicks++;
+                    }
+                    // else
+                    // {
+                    //     debugToShort++;
+                    // }
+
+                    // this tick has been treat reset down detection
                     m_VolatileInterupDownTime = 0;
                 }
-                m_VolatileInterupUpTime = now;
+                
+                // m_VolatileInterupUpTime = now;
             }
             else
             {
+                m_VolatileInterupDownTime = now;
+
                 // Falling use case
-                if (0 != m_VolatileInterupUpTime)
-                { // normal Usecase
-                    unsigned long delta = now - m_VolatileInterupUpTime;
-                    if (delta >= 30) // duration min is 30ms According to EN 62053-31
-                    {
-                        // check if delay between tick is correct according to max power
-                        if ((now - delta) > m_MinDuration)
-                        {
-                            m_VolatileInterupDownTime = now;
-                        }
-                        else
-                        {
-                            debugToShortDelay++;
-                            m_VolatileInterupDownTime = 0;
-                        }
-                    }
-                    else
-                    {
-                        debugToShortDelay++;
-                        m_VolatileInterupDownTime = 0;
-                    }
-                }
-                else
-                { // First tick or previous ignored
-                    m_VolatileInterupDownTime = now;
-                }
+                // if (0 != m_VolatileInterupUpTime)
+                // { // normal Usecase
+                //     unsigned long delta = now - m_VolatileInterupUpTime;
+                //     if (delta >= 30) // duration min is 30ms According to EN 62053-31
+                //     {
+                //         // check if delay between tick is correct according to max power
+                //         if ((now - delta) > m_MinDuration)
+                //         {
+                //             m_VolatileInterupDownTime = now;
+                //         }
+                //         else
+                //         {
+                //             debugToShortDelay++;
+                //             m_VolatileInterupDownTime = 0;
+                //         }
+                //     }
+                //     else
+                //     {
+                //         debugToShortDelay++;
+                //         m_VolatileInterupDownTime = 0;
+                //     }
+                // }
+                // else
+                // { // First tick or previous ignored
+                //     m_VolatileInterupDownTime = now;
+                // }
             }
             // }
             // else
@@ -277,21 +315,21 @@ namespace HALIB_NAMESPACE
             // }
         }
 
-        virtual JsonObject toJson()
-        {
-            const size_t capacity = JSON_OBJECT_SIZE(5);
-            StaticJsonDocument<capacity> doc;
-            JsonObject object = doc.to<JsonObject>();
+        // virtual JsonObject toJson()
+        // {
+        //     const size_t capacity = JSON_OBJECT_SIZE(5);
+        //     StaticJsonDocument<capacity> doc;
+        //     JsonObject object = doc.to<JsonObject>();
 
-            object["type"] = "DDS238";
-            object["name"] = m_Name;
-            object["ref"] = m_IOReference;
-            object["tickbyKW"] = m_TickByTenthKW * 10;
-            object["voltage"] = 220;
-            object["amp"] = 16;
+        //     object["type"] = "DDS238";
+        //     object["name"] = m_Name;
+        //     object["ref"] = m_IOReference;
+        //     object["tickbyKW"] = m_TickByTenthKW * 10;
+        //     object["voltage"] = 220;
+        //     object["amp"] = 16;
 
-            return object;
-        }
+        //     return object;
+        // }
 
 /*
 static const char htmlDebugPatern[] PROGMEM = "\
@@ -315,7 +353,7 @@ minDuration=%u\
         //         void toHtmlDebug(char *output)
         //         {
         //             sprintf_P(output, htmlDebugPatern,
-        //                       debugTotalTicks,
+        //                       //debugTotalTicks,
         //                       m_Persistent.ticks,
         //                       debugToShort,
         //                       debugToShortDelay,
@@ -334,7 +372,7 @@ minDuration=%u\
         unsigned int m_MinDuration;
 
         HA_DDS238_PERSISTENT_FUNCTION m_PersistenceFunction;
-
+        HADevice *m_pDevice;
         HAComponentSensor *m_pCumulaticComponent;
         HAComponentSensor *m_pInstantComponent;
 
@@ -347,10 +385,10 @@ minDuration=%u\
         boolean m_VolatileStandbyState;
         int m_VolatileTicks;
 
-        unsigned long debugTotalTicks;
-        int debugToShort;
-        int debugToShortDelay;
-        int debugLastTickDuration;
+        // unsigned long debugTotalTicks;
+        // int debugToShort;
+        // int debugToShortDelay;
+        // int debugLastTickDuration;
 
         boolean m_IsTicked;
 
