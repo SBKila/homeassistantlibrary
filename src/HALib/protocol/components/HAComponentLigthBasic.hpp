@@ -52,14 +52,14 @@ namespace HALIB_NAMESPACE
     private:
         void publishState()
         {
-            DEBUG_PRINTLN("===>publishState");
+            HALIB_COMPONENT_DEBUG_MSG("===>publishState\n");
             char topic[getTopicPath(PROP_STATE_TOPIC) + 1];
-            //DEBUG_PRINTLN_DEC(sizeof(topic));
+            //HALIB_COMPONENT_DEBUG_MSG_DEC(sizeof(topic));
             getTopicPath(PROP_STATE_TOPIC, topic);
-            //DEBUG_PRINTLN(topic);
+            //HALIB_COMPONENT_DEBUG_MSG(topic);
 
             // const char* message =  getProperty(m_stateON?PROP_PAYLOAD_ON:PROP_PAYLOAD_OFF,true);
-            // DEBUG_PRINTLN(message);
+            // HALIB_COMPONENT_DEBUG_MSG(message);
 
             if (NULL != m_pNode)
             {
@@ -67,7 +67,7 @@ namespace HALIB_NAMESPACE
             }
             else
             {
-                DEBUG_PRINTLN("Node not configured");
+                HALIB_COMPONENT_DEBUG_MSG("Node not configured\n");
             }
         }
 

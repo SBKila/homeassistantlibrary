@@ -185,7 +185,7 @@ namespace HALIB_NAMESPACE
             prev = tmp;
             tmp = tmp->next;
         }
-        DEBUG_PRINTLN("LinkedList<T>::remove=false");
+        // DEBUG_PRINTLN("LinkedList<T>::remove=false");
         return false;
     }
 } // namespace HALIB_NAMESPACE

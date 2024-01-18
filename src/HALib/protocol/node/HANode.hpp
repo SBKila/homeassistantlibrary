@@ -132,10 +132,9 @@ namespace HALIB_NAMESPACE
                 IHAComponent *pComponent = (IHAComponent *)mComponents.get(index);
                 char *topic = pComponent->buildDiscoveryTopic("homeassistant", mName);
                 char *componentDiscoveryMessage = pComponent->buildDiscoveryMessage();
-
                 char *discoveryMessage = componentDiscoveryMessage;
 
-                // if device info present patch component discovery message
+                // if device info present extend component discovery message
                 if (deviceInfoLength != 0)
                 {
                     size_t discoveryMessagesLength = strlen(componentDiscoveryMessage);
@@ -151,10 +150,11 @@ namespace HALIB_NAMESPACE
                 //HALIB_NODE_DEBUG_MSG(topic);
                 //HALIB_NODE_DEBUG_MSG(discoveryMessage);
                 postMessage(new HAMessage(topic, discoveryMessage, true));
+                free(topic);
+                free(discoveryMessage);
             }
             free(tempDeviceInfo);
         };
-
         void postDiscoveryMessage(IHAComponent *pComponent)
         {
             HALIB_NODE_DEBUG_MSG("===>postDiscoveryMessage\n");

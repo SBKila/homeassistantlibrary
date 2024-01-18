@@ -110,6 +110,7 @@ namespace HALIB_NAMESPACE
         }
         virtual char *buildDiscoveryMessage()
         {
+            /*compute message size*/
             size_t size = 2;
 
             for (int index = 0; index < mProperties.getSize(); index++)
@@ -127,7 +128,10 @@ namespace HALIB_NAMESPACE
                 //size += (index == 0) ? 0 : 1;
             }
 
+            /*allocate message memory*/
             char *discoveryString = (char *)calloc(size + 1, sizeof(char));
+            
+            /*fill message*/
             char *currentPosition = discoveryString;
             *currentPosition = '{';
             currentPosition++;

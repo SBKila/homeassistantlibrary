@@ -38,7 +38,7 @@ namespace HALIB_NAMESPACE
             }
             else
             {
-                DEBUG_PRINTLN("Node not configured");
+                HALIB_COMPONENT_DEBUG_MSG("Node not configured\n");
             }
         }
 
