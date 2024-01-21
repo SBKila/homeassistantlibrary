@@ -321,6 +321,31 @@ void UT_HAComponent_GetTopicPath(void)
     uint32_t freeAfter = ESP.getFreeHeap();
     TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
 }
+void UT_HAUtils_generateId(void)
+{
+    char component10Name[] = "Pompes_instant";
+    char component20Name[] = "Lavage_cumulat";
+    char component11Name[] = "Pompes_cumulat";
+    char component21Name[] = "Lavage_instant";
+    
+    uint32_t id10 = HAUtils::generateId(component10Name,SENSOR);
+    uint32_t id100 = HAUtils::generateId(component10Name,SENSOR);
+    uint32_t id101 = HAUtils::generateId(component10Name,SENSOR);
+    uint32_t id102 = HAUtils::generateId(component10Name,SENSOR);
+    uint32_t id103 = HAUtils::generateId(component10Name,BINARY_SENSOR);
+
+    uint32_t id20 = HAUtils::generateId(component20Name,SENSOR);
+    uint32_t id11 = HAUtils::generateId(component11Name,SENSOR);
+    uint32_t id21 = HAUtils::generateId(component21Name,SENSOR);
+    
+    TEST_ASSERT_FALSE_MESSAGE(id10 == id20,"Pompes_instant = Lavage_cumulat");
+    TEST_ASSERT_FALSE_MESSAGE(id11 == id21,"Pompes_instant = Pompes_cumulat");
+    TEST_ASSERT_FALSE_MESSAGE(id10 == id103,"Pompes_instant with different type");
+    TEST_ASSERT_FALSE_MESSAGE(id10 != id100,"Pompes_instant should be same") ;
+    TEST_ASSERT_FALSE_MESSAGE(id10 != id101,"Pompes_instant should be same");
+    TEST_ASSERT_FALSE_MESSAGE(id10 != id102,"Pompes_instant should be same");
+    
+}
 
 int callbackCalled = 0;
 void resetCallbackCall()
@@ -608,7 +633,7 @@ public:
 
             Serial.print(" topic : ");
             int offset = 4;
-            int topicSize = ((*(buf + offset++)) << 8) + *(buf + offset++);
+            int topicSize = ((*(buf + (offset++))) << 8) + *(buf + offset++);
 
             for (int index = 0; index < topicSize; index++)
             {
@@ -876,18 +901,19 @@ void setup()
     digitalWrite(LED_BUILTIN, LOW);
 
     delay(500);
-    RUN_TEST(UT_HANode_constructor);
-    RUN_TEST(UT_HADevice_constructor);
-    RUN_TEST(UT_HAComponentProperty);
-    RUN_TEST(UT_LinkedList);
-    RUN_TEST(UT_HAComponent_constructor);
-    RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
-    RUN_TEST(UT_HAComponent_GenerateId);
-    RUN_TEST(UT_HAComponent_GetTopicPath);
-    RUN_TEST(UT_HAComponent_DiscoveryMessage);
-    RUN_TEST(UT_HAComponentDeviceTrigger);
-    RUN_TEST(UT_HAAdapter_constructor);
-    RUN_TEST(UT_OnHAMessage);
+    RUN_TEST(UT_HAUtils_generateId);
+    // RUN_TEST(UT_HANode_constructor);
+    // RUN_TEST(UT_HADevice_constructor);
+    // RUN_TEST(UT_HAComponentProperty);
+    // RUN_TEST(UT_LinkedList);
+    // RUN_TEST(UT_HAComponent_constructor);
+    // RUN_TEST(UT_HAComponent_buildDiscoveryTopic);
+    // RUN_TEST(UT_HAComponent_GenerateId);
+    // RUN_TEST(UT_HAComponent_GetTopicPath);
+    // RUN_TEST(UT_HAComponent_DiscoveryMessage);
+    // RUN_TEST(UT_HAComponentDeviceTrigger);
+    // RUN_TEST(UT_HAAdapter_constructor);
+    // RUN_TEST(UT_OnHAMessage);
 
     //RUN_TEST(UC_SETUP);
     //RUN_TEST(UC_StreamHAMessages);

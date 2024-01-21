@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../protocol/components/HAComponentProperty.hpp"
+#include "unity.h"
 
 // #include "../debug.h"
 namespace HALIB_NAMESPACE
@@ -17,7 +18,7 @@ namespace HALIB_NAMESPACE
                 HAComponentProperty *pComponentProperty = pProperties.get(index);
                 size += pComponentProperty->getJson(); // add item size
                 size++;                                // add ',' size
-                //size += (index == 0) ? 0 : 1;
+                // size += (index == 0) ? 0 : 1;
             }
 
             char *jsonString = (char *)calloc(size + 1, sizeof(char));
@@ -65,32 +66,26 @@ namespace HALIB_NAMESPACE
         }
         static uint32_t generateId(const char *pName, ComponentType pType)
         {
-            byte offset = 3;
-            byte prevVal = 0;
-
             uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
-
+            int indexRotation = 0;
             // generate initValue with component name
             for (size_t index = 0; index < strlen(pName); index++)
             {
-                prevVal ^= (*(pName + index));
+                uint32_t input = (*(pName + index));
+                input = input << indexRotation++;
+                if (indexRotation > sizeof(identifier))
+                    indexRotation = 0;
+                identifier ^= input;
             }
             // and component type
             for (size_t index = 0; index < strlen_P(componentTypeTag[pType]); index++)
             {
-                prevVal ^= pgm_read_byte(componentTypeTag[pType] + index);
+                uint32_t input = pgm_read_byte(componentTypeTag[pType] + index);
+                input = input << indexRotation++;
+                if (indexRotation > sizeof(identifier))
+                    indexRotation = 0;
+                identifier ^= input;
             }
-
-            // generate a Xor
-            for (size_t index = 0; index < strlen(pName); index++)
-            {
-                uint32_t val = ((identifier >> (4 * offset)) & 0xFF) ^ prevVal;
-                identifier ^= (val << (4 * offset--));
-                if (offset < 0)
-                    offset = 3;
-                prevVal = val;
-            }
-
             return identifier;
         };
 
