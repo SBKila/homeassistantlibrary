@@ -7,11 +7,13 @@
 
 namespace HALIB_NAMESPACE
 {
+#define DEFAULTTAG 987
+#define MAGICTAG 963
     struct DDS238Data
     {
-        int tag=0;
-        uint ticks=0;
-        float cumulative=0;
+        int tag = DEFAULTTAG;
+        uint ticks = 0;
+        float cumulative = 0;
     };
 
     class HAAdapterDDS238 : public HAAdapter
@@ -20,12 +22,18 @@ namespace HALIB_NAMESPACE
         HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction) : HAAdapter(name, ioReference)
         {
             HALIB_ADAPTER_DEBUG_MSG("Constructor\n");
+            if (tickByKW == 0)
+                tickByKW = 2000;
+            if (voltage > 230)
+                voltage = 230;
+            if ((maxAmp != 32) && (maxAmp != 20) && (maxAmp != 16) && (maxAmp != 10))
+                maxAmp = 16;
 
             m_TickByTenthKW = tickByKW / 10;
             m_PersistenceFunction = persistentFunction;
 
             // reset persistant data
-            m_Persistent.tag = 963;
+            m_Persistent.tag = MAGICTAG;
             m_Persistent.ticks = 0;
             m_Persistent.cumulative = 0;
 
@@ -36,18 +44,15 @@ namespace HALIB_NAMESPACE
             m_VolatileState = HIGH;
             m_VolatileAverageTickDuration = 0;
 
-            m_pDevice=NULL;
-
+            m_pDevice = NULL;
             size_t nameLength = strlen(name);
             char *buffer = (char *)calloc(nameLength + 8 + 1, sizeof(char));
-
             // Setup HA sensor for cumulative power
             strcpy(buffer, name);
             strcat(buffer, "_cumulat");
-            m_pCumulaticComponent = new HAComponentSensor(buffer,DC_ENERGY, false);
+            m_pCumulaticComponent = new HAComponentSensor(buffer, DC_ENERGY, false);
             m_pCumulaticComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
             m_pCumulaticComponent->addProperty(PROP_STATE_CLASS, "total_increasing");
-
             // Setup HA sensor for instant power
             strcpy(buffer, name);
             strcat(buffer, "_instant");
@@ -56,24 +61,23 @@ namespace HALIB_NAMESPACE
             m_pInstantComponent->addProperty(PROP_STATE_CLASS, "measurement");
 
             free(buffer);
-
             m_InstantFactor = 3600000 / tickByKW;
             m_MinDuration = 3600000. / ((voltage * maxAmp) * (1000. / tickByKW));
-
-            //debugTotalTicks = 0;
-            // debugToShort = 0;
-            // debugLastTickDuration = 0;
+            // debugTotalTicks = 0;
+            //  debugToShort = 0;
+            //  debugLastTickDuration = 0;
             HALIB_ADAPTER_DEBUG_MSG("ConstructorEND\n");
         }
         virtual ~HAAdapterDDS238()
         {
             suspend(true);
 
-            m_Persistent.tag=0;
+            m_Persistent.tag = 0;
             m_PersistenceFunction(m_Persistent);
 
-            if(m_pDevice!=NULL){
-                m_pDevice->removeComponent(m_pCumulaticComponent);    
+            if (m_pDevice != NULL)
+            {
+                m_pDevice->removeComponent(m_pCumulaticComponent);
                 m_pDevice->removeComponent(m_pInstantComponent);
             }
             delete m_pCumulaticComponent;
@@ -82,12 +86,12 @@ namespace HALIB_NAMESPACE
         virtual void setDevice(HADevice *p_pDevice)
         {
             HALIB_ADAPTER_DEBUG_MSG("setDevice\n");
-            if(m_pDevice!=NULL){
-                HALIB_ADAPTER_DEBUG_MSG("setDevice1\n");
-                m_pDevice->removeComponent(m_pCumulaticComponent);    
+            if (m_pDevice != NULL)
+            {
+                HALIB_ADAPTER_DEBUG_MSG("remove from previous\n");
+                m_pDevice->removeComponent(m_pCumulaticComponent);
                 m_pDevice->removeComponent(m_pInstantComponent);
             }
-            HALIB_ADAPTER_DEBUG_MSG("setDevice2\n");
             m_pDevice = p_pDevice;
             m_pDevice->addComponent(m_pCumulaticComponent);
             m_pDevice->addComponent(m_pInstantComponent);
@@ -97,21 +101,24 @@ namespace HALIB_NAMESPACE
         virtual void restore(DDS238Data persistence)
         {
             HALIB_ADAPTER_DEBUG_MSG("restore\n");
-            // restore only if value ok
-            if (persistence.tag == 963)
+            // restaore only if compliant or new value
+            if (
+                (persistence.tag == MAGICTAG) ||
+                (persistence.tag == DEFAULTTAG))
             {
-                m_Persistent = persistence;
-
-                // send value to MQTT
-                m_pCumulaticComponent->setValue(m_Persistent.cumulative / 10);
-
-                //debugTotalTicks = 0;
-                // debugToShort = 0;
-                // debugToShortDelay = 0;
-            } else {
-                // persist cumulative power
-                m_PersistenceFunction(m_Persistent);
+                m_Persistent.cumulative = persistence.cumulative;
+                m_Persistent.ticks = persistence.ticks;
+                // send value to component
+                m_pCumulaticComponent->setValue(m_Persistent.cumulative);
             }
+            else // otherwise persist default cumulative power
+            {
+                HALIB_ADAPTER_DEBUG_MSG("restored with default\n");
+            }
+
+            if (persistence.tag != MAGICTAG)
+                m_PersistenceFunction(m_Persistent);
+
             HALIB_ADAPTER_DEBUG_MSG("restoreEND\n");
         }
         virtual void loop()
@@ -134,16 +141,16 @@ namespace HALIB_NAMESPACE
                 if (m_Persistent.ticks > m_TickByTenthKW)
                 {
                     // increment cumulative power
-                    m_Persistent.cumulative++;
+                    m_Persistent.cumulative+=0.1;
 
                     // decrement ticks
                     m_Persistent.ticks -= m_TickByTenthKW;
 
                     // send value to MQTT
-                    m_pCumulaticComponent->setValue(m_Persistent.cumulative / 10);
+                    m_pCumulaticComponent->setValue(m_Persistent.cumulative);
 
                     // persist cumulative power
-                    //m_PersistenceFunction(m_Persistent);
+                    // m_PersistenceFunction(m_Persistent);
                 }
 
                 // Instant power management
@@ -167,16 +174,16 @@ namespace HALIB_NAMESPACE
                     if (deltaT > 0)
                     {
                         m_InstantPower = nbTick * m_InstantFactor / deltaT;
-                        float rounded = (floorf(10*m_InstantPower))/10;
-                        
-                        // on HA only transfert number with 1 decimal 
+                        float rounded = (floorf(10 * m_InstantPower)) / 10;
+
+                        // on HA only transfert number with 1 decimal
                         m_pInstantComponent->setValue(rounded);
                     }
                     m_LastTickDeltaTime = deltaT;
                 }
-                
+
                 m_LastTickTreatedTime = tickTime;
-                // store data at each ticks 
+                // store data at each ticks
                 m_PersistenceFunction(m_Persistent);
             }
             else
@@ -206,25 +213,25 @@ namespace HALIB_NAMESPACE
             else
             {
                 attachInterrupt(
-                    digitalPinToInterrupt(m_IOReference), [this]()ICACHE_RAM_ATTR{
+                    digitalPinToInterrupt(m_IOReference), [this]() ICACHE_RAM_ATTR
+                    {
                         noInterrupts();
                         this->onTick();
-                        interrupts();
-                    },
+                        interrupts(); },
                     CHANGE);
             }
         }
 
         /*
-        * -----------       -------------------------
-        *           |       |
-        *           |       |
-        *           ---------
-        *             Tick
-        * 
-        *
-        */
-             
+         * -----------       -------------------------
+         *           |       |
+         *           |       |
+         *           ---------
+         *             Tick
+         *
+         *
+         */
+
         virtual void onTick()
         {
             unsigned long now = millis();
@@ -240,11 +247,10 @@ namespace HALIB_NAMESPACE
                     // debugLastTickDuration = delta;
 
                     if (delta >= 30) // duration min is 30ms According to EN 62053-31
-                    {   // this signal should be taken in acount
+                    {                // this signal should be taken in acount
                         m_VolatileTicks++;
                         m_VolatileTickTime = now;
-                     
-                     
+
                         // if (m_VolatileAverageTickDuration == 0)
                         // {
                         //     m_VolatileAverageTickDuration = delta;
@@ -254,7 +260,7 @@ namespace HALIB_NAMESPACE
                         //     m_VolatileAverageTickDuration = (m_VolatileAverageTickDuration + delta) / 2;
                         // }
 
-                        //debugTotalTicks++;
+                        // debugTotalTicks++;
                     }
                     // else
                     // {
@@ -264,7 +270,7 @@ namespace HALIB_NAMESPACE
                     // this tick has been treat reset down detection
                     m_VolatileInterupDownTime = 0;
                 }
-                
+
                 // m_VolatileInterupUpTime = now;
             }
             else
@@ -331,25 +337,25 @@ namespace HALIB_NAMESPACE
         //     return object;
         // }
 
-/*
-static const char htmlDebugPatern[] PROGMEM = "\
-<div><div>Ticks <span>Total:%lu </span>\
-<span>Current:%d </span>\
-<span>ToShort:%d </span>\
-<span>ToClose:%d </span>\
-</div><div>Duration \
-<span>Last:%d </span>\
-<span>Average:%.2f </span>\
-<span>Since last:%lu </span>\
-</div><div>Power\
-<span>instant:%.2f </span>\
-<span>Tick/TenthKW:%d </span>\
-</div><div>\
-state:%s\
-</div><div>\
-minDuration=%u\
- </div>";
-*/
+        /*
+        static const char htmlDebugPatern[] PROGMEM = "\
+        <div><div>Ticks <span>Total:%lu </span>\
+        <span>Current:%d </span>\
+        <span>ToShort:%d </span>\
+        <span>ToClose:%d </span>\
+        </div><div>Duration \
+        <span>Last:%d </span>\
+        <span>Average:%.2f </span>\
+        <span>Since last:%lu </span>\
+        </div><div>Power\
+        <span>instant:%.2f </span>\
+        <span>Tick/TenthKW:%d </span>\
+        </div><div>\
+        state:%s\
+        </div><div>\
+        minDuration=%u\
+         </div>";
+        */
         //         void toHtmlDebug(char *output)
         //         {
         //             sprintf_P(output, htmlDebugPatern,
@@ -397,6 +403,6 @@ minDuration=%u\
         unsigned long m_LastTickDeltaTime = 0;
         float m_InstantPower = 0;
 
-        //String getPMReference(uint8_t digitalIO);
+        // String getPMReference(uint8_t digitalIO);
     };
 } // namespace HALIB_NAMESPACE
