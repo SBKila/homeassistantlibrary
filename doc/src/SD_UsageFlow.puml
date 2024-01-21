@@ -1,0 +1,136 @@
+@startuml
+title Life Cycle
+
+box "lib/arduino" #62AEB2
+participant HADevice
+participant HAAdapter
+end box
+box "lib/protocol" #3eb7ed
+participant HANode
+participant HAComponent
+end box
+box "arduino" #62FFDE
+participant Client
+participant PubSubClient
+end box
+
+== Creation ==
+create HADevice
+[-> HADevice: new
+activate HADevice
+create HANode
+HADevice -> HANode: new
+activate HANode
+HANode -> HANode: add properties
+return
+HADevice -> HANode: setDeviceInfo
+return
+
+loop each Adapter needed
+    [-> HAAdapter: new
+    activate HAAdapter
+    loop each data to share in HA
+        create HAComponent
+        HAAdapter->HAComponent:new
+        activate HAComponent
+        HAComponent -> HAComponent: add properties
+        return
+        HAAdapter -> HAComponent : addProperties
+    end
+    return
+end
+== initialisation ==
+[-> HADevice: setup
+activate HADevice
+HADevice -> PubSubClient : register message Received
+HADevice->[
+deactivate HADevice
+[-> HAAdapter: setup
+activate HAAdapter
+HAAdapter->[
+deactivate HAAdapter
+[-> HAAdapter: setDevice
+activate HAAdapter
+HAAdapter -> HADevice : addComponent
+activate HADevice
+HADevice -> HANode : addComponent
+activate HANode
+HANode -> HAComponent : setNode
+activate HAComponent
+HAComponent -> HAComponent : addProperties
+loop action
+    HAComponent -> HANode : RegisterToHA (action)
+    activate HANode
+    HANode -> HANode : post action suscribe Message
+    HANode -> HAComponent
+    deactivate HANode
+end
+HAComponent -> HANode
+deactivate HAComponent
+HANode -> HADevice
+deactivate HANode
+HADevice -> HAAdapter
+deactivate HADevice
+HAAdapter->[
+deactivate HAAdapter
+== loop ==
+loop each HAAdapter
+    [-> HAAdapter: loop
+    activate HAAdapter
+    HAAdapter ->[
+    deactivate HAAdapter
+end
+[-> HADevice: loop
+activate HADevice
+alt isSetup
+    alt wifi Connected
+        alt mqtt Connected
+            HADevice -> HADevice : treatActions
+            activate HADevice
+            loop no more Action
+                HADevice -> HANode: pickup action
+                HADevice -> HADevice : treatAction
+                activate HADevice
+                alt type message
+                    HADevice -> PubSubClient : publish
+                else type suscribe
+                    HADevice -> PubSubClient : subscribe
+                else type unsuscribe
+                    HADevice -> PubSubClient : unsubscribe
+                end
+                HADevice -> HADevice
+                deactivate HADevice
+            end
+            HADevice -> HADevice
+            deactivate HADevice
+        else
+            HADevice -> HADevice : connectMQTTServer
+            alt mqtt Connected
+                HADevice -> HADevice : sendAvailability
+                activate HADevice
+                HADevice -> HANode : getProperty (Availability topic)
+                HADevice -> HANode : getProperty (Availability message)
+                HADevice -> PubSubClient : publish
+                HADevice -> HADevice
+                deactivate HADevice
+                HADevice -> HANode : onHAConnect(true)
+                activate HANode
+                loop each HAComponent
+                    HANode -> HAComponent : _onHAConnect()
+                    HAComponent -> HANode
+                end
+                HANode -> HADevice
+                deactivate HANode
+            else
+                HADevice -> HANode : onHAConnect(false)
+                activate HANode
+                HANode -> HADevice
+                deactivate HANode
+            end
+        end
+    end
+    HADevice -> PubSubClient : loop
+end
+HADevice->[
+deactivate HADevice
+@enduml
