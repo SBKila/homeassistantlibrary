@@ -101,7 +101,6 @@ namespace HALIB_NAMESPACE
              if (NULL != p_pComponent)
             {
                 p_pComponent->setNode(NULL);
-                 HALIB_NODE_DEBUG_MSG("removeComponent2\n");
                 mComponents.remove(p_pComponent);
             }
             HALIB_NODE_DEBUG_MSG("removeComponentEND\n");
@@ -111,9 +110,7 @@ namespace HALIB_NAMESPACE
             HALIB_NODE_DEBUG_MSG("addComponent\n");
             if (NULL != p_pComponent)
             {
-                HALIB_NODE_DEBUG_MSG("addComponent1\n");
                 p_pComponent->setNode(this);
-                HALIB_NODE_DEBUG_MSG("addComponent2\n");
                 mComponents.append(p_pComponent);
             }
             HALIB_NODE_DEBUG_MSG("addComponentEND\n");
@@ -213,10 +210,10 @@ namespace HALIB_NAMESPACE
             }
         }
 
-        void onHAConnect(boolean connect)
+        void onHAConnect(boolean isConnected)
         {
-            mIsHAConnected = connect;
-            if (connect)
+            mIsHAConnected = isConnected;
+            if (isConnected)
             {
                 for (int index = 0; index < mComponents.getSize(); index++)
                 {
