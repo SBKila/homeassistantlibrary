@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../protocol/components/HAComponentProperty.hpp"
-#include "unity.h"
 
 // #include "../debug.h"
 namespace HALIB_NAMESPACE
