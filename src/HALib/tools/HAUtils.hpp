@@ -66,13 +66,13 @@ namespace HALIB_NAMESPACE
         static uint32_t generateId(const char *pName, ComponentType pType)
         {
             uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
-            int indexRotation = 0;
+            uint32_t indexRotation = 0;
             // generate initValue with component name
             for (size_t index = 0; index < strlen(pName); index++)
             {
                 uint32_t input = (*(pName + index));
                 input = input << indexRotation++;
-                if (indexRotation > sizeof(identifier))
+                if (indexRotation > (uint32_t)sizeof(identifier))
                     indexRotation = 0;
                 identifier ^= input;
             }
@@ -81,7 +81,7 @@ namespace HALIB_NAMESPACE
             {
                 uint32_t input = pgm_read_byte(componentTypeTag[pType] + index);
                 input = input << indexRotation++;
-                if (indexRotation > sizeof(identifier))
+                if (indexRotation > (uint32_t) sizeof(identifier))
                     indexRotation = 0;
                 identifier ^= input;
             }

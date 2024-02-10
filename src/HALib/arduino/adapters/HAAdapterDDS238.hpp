@@ -19,7 +19,7 @@ namespace HALIB_NAMESPACE
     class HAAdapterDDS238 : public HAAdapter
     {
     public:
-        HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction) : HAAdapter(name, ioReference)
+        HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction, boolean average) : HAAdapter(name, ioReference)
         {
             HALIB_ADAPTER_DEBUG_MSG("Constructor\n");
             if (tickByKW == 0)
@@ -28,6 +28,8 @@ namespace HALIB_NAMESPACE
                 voltage = 230;
             if ((maxAmp != 32) && (maxAmp != 20) && (maxAmp != 16) && (maxAmp != 10))
                 maxAmp = 16;
+
+            m_AverageActive = average;
 
             m_TickByTenthKW = tickByKW / 10;
             m_PersistenceFunction = persistentFunction;
@@ -121,6 +123,7 @@ namespace HALIB_NAMESPACE
 
             HALIB_ADAPTER_DEBUG_MSG("restoreEND\n");
         }
+
         virtual void loop()
         {
             // if some tick happend since last loop
@@ -141,7 +144,7 @@ namespace HALIB_NAMESPACE
                 if (m_Persistent.ticks > m_TickByTenthKW)
                 {
                     // increment cumulative power
-                    m_Persistent.cumulative+=0.1;
+                    m_Persistent.cumulative += 0.1;
 
                     // decrement ticks
                     m_Persistent.ticks -= m_TickByTenthKW;
@@ -173,7 +176,7 @@ namespace HALIB_NAMESPACE
                     }
                     if (deltaT > 0)
                     {
-                        m_InstantPower = nbTick * m_InstantFactor / deltaT;
+                        m_InstantPower = m_AverageActive?computeAverage(nbTick, deltaT):computeInstant(nbTick, deltaT);
                         float rounded = (floorf(10 * m_InstantPower)) / 10;
 
                         // on HA only transfert number with 1 decimal
@@ -188,12 +191,18 @@ namespace HALIB_NAMESPACE
             }
             else
             {
+                // auto decrement if no more instant power.
                 if (m_InstantPower != 0)
                 {
                     if ((millis() - m_LastTickTreatedTime) > (10 * m_InstantFactor))
                     {
                         m_InstantPower = 0;
+                        m_AverageDataSet.nbTick = 0;
+                        m_AverageDataSet.duration = 0;
+                        m_AverageBuffer.clear();
+
                         m_pInstantComponent->setValue(0);
+                        
                     }
                 }
             }
@@ -231,7 +240,6 @@ namespace HALIB_NAMESPACE
          *
          *
          */
-
         virtual void onTick()
         {
             unsigned long now = millis();
@@ -326,14 +334,12 @@ namespace HALIB_NAMESPACE
         //     const size_t capacity = JSON_OBJECT_SIZE(5);
         //     StaticJsonDocument<capacity> doc;
         //     JsonObject object = doc.to<JsonObject>();
-
         //     object["type"] = "DDS238";
         //     object["name"] = m_Name;
         //     object["ref"] = m_IOReference;
         //     object["tickbyKW"] = m_TickByTenthKW * 10;
         //     object["voltage"] = 220;
         //     object["amp"] = 16;
-
         //     return object;
         // }
 
@@ -365,7 +371,6 @@ namespace HALIB_NAMESPACE
         //                       debugToShortDelay,
         //                       debugLastTickDuration,
         //                       m_VolatileAverageTickDuration,
-
         //                       m_LastTickDeltaTime,
         //                       m_InstantPower,
         //                       m_TickByTenthKW,
@@ -374,8 +379,41 @@ namespace HALIB_NAMESPACE
         //         }
 
     protected:
+        struct InstantMeasure
+        {
+            unsigned long duration = 0;
+            int nbTick = 0;
+        };
+        float computeInstant(int p_nbTick, unsigned long p_duration)
+        {
+            return p_nbTick * m_InstantFactor / p_duration;
+        }
+        float computeAverage(int p_nbTick, unsigned long p_duration)
+        {
+            InstantMeasure newMeasure;
+            newMeasure.duration = p_duration;
+            newMeasure.nbTick = p_nbTick;
+
+            InstantMeasure *pRemovedMeasure = m_AverageBuffer.push(newMeasure);
+
+            if (NULL != pRemovedMeasure)
+            {
+                m_AverageDataSet.nbTick -= pRemovedMeasure->nbTick;
+                m_AverageDataSet.duration -= pRemovedMeasure->duration;
+            }
+            m_AverageDataSet.nbTick += newMeasure.nbTick;
+            m_AverageDataSet.duration += newMeasure.duration;
+
+            return m_AverageDataSet.nbTick * m_InstantFactor / m_AverageDataSet.duration;
+        }
+
         ushort m_TickByTenthKW;
         unsigned int m_MinDuration;
+        
+        boolean m_AverageActive = FALSE;
+
+        InstantMeasure m_AverageDataSet;
+        BufferFIFO<InstantMeasure> m_AverageBuffer(10);
 
         HA_DDS238_PERSISTENT_FUNCTION m_PersistenceFunction;
         HADevice *m_pDevice;

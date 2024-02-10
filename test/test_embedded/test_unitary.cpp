@@ -2,8 +2,42 @@
 #include <unity.h>
 
 #include "HALib/HALib.h"
+#include "HALib/tools/BufferFIFO.hpp"
 
 using namespace HALIB_NAMESPACE;
+
+void UT_BufferFIFO(void)
+{
+    uint32_t freeBefore = ESP.getFreeHeap();
+    BufferFIFO<int>* buffer;
+    buffer = new BufferFIFO<int>(5);
+    int val=1;
+    int overload=1;
+    TEST_ASSERT_EQUAL(NULL,buffer->push(val++));
+    TEST_ASSERT_EQUAL(NULL,buffer->push(val++));
+    TEST_ASSERT_EQUAL(NULL,buffer->push(val++));
+    TEST_ASSERT_EQUAL(NULL,buffer->push(val++));
+    TEST_ASSERT_EQUAL(NULL,buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    TEST_ASSERT_EQUAL(overload++,*buffer->push(val++));
+    delete buffer;
+    int32_t freeAfter = ESP.getFreeHeap();
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
+
+}
+
 void UT_LinkedList(void)
 {
     HAComponent hAComponent1("Device1", BINARY_SENSOR);
@@ -633,7 +667,8 @@ public:
 
             Serial.print(" topic : ");
             int offset = 4;
-            int topicSize = ((*(buf + (offset++))) << 8) + *(buf + offset++);
+            int topicSize = ((*(buf + (offset+1))) << 8) + *(buf + offset+2);
+            offset+=2;
 
             for (int index = 0; index < topicSize; index++)
             {
@@ -743,146 +778,153 @@ public:
         return true;
     }
 };
-void UC_StreamHAMessages(void)
-{
-    byte *wifiInputBuffer = (byte *)malloc(60);
-    byte *wifiOutputBuffer = (byte *)malloc(512);
-    mockClient espClient;
-    uint32_t freeBefore = ESP.getFreeHeap();
+// void UC_StreamHAMessages(void)
+// {
+//     byte *wifiInputBuffer = (byte *)malloc(60);
+//     byte *wifiOutputBuffer = (byte *)malloc(512);
+//     mockClient espClient;
+//     uint32_t freeBefore = ESP.getFreeHeap();
 
-    TEST_MESSAGE("LOOP 1");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    int messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
+//     TEST_MESSAGE("LOOP 1");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     int messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
 
-    HADevice *p_MyDevice = new HADevice("portal");
-    p_MyDevice->setup(espClient, "localhost", 8383);
+//     HADevice *p_MyDevice = new HADevice("portal");
+//     p_MyDevice->setup(espClient, "localhost", 8383);
 
-    HAAdapterPushBtn *p_Adapter = new HAAdapterPushBtn("MyButton", A0);
-    p_Adapter->setup();
-    p_Adapter->setDevice(p_MyDevice);
+//     HAAdapterPushBtn *p_Adapter = new HAAdapterPushBtn("MyButton", A0);
+//     p_Adapter->setup();
+//     p_Adapter->setDevice(p_MyDevice);
 
-    p_MyDevice->loop(WL_CONNECTED);
-    TEST_ASSERT_EQUAL_MESSAGE(2, wifiOutputBuffer[0], "2 messages expected");
+//     p_MyDevice->loop(WL_CONNECTED);
+//     TEST_ASSERT_EQUAL_MESSAGE(2, wifiOutputBuffer[0], "2 messages expected");
 
-    int messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(1, wifiOutputBuffer[messageOffset] >> 4, "CONNECT message expected");
-    messageOffset += messageSize;
+//     int messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(1, wifiOutputBuffer[messageOffset] >> 4, "CONNECT message expected");
+//     messageOffset += messageSize;
 
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH available message expected");
-    messageOffset += messageSize;
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH available message expected");
+//     messageOffset += messageSize;
 
-    TEST_MESSAGE("LOOP 2");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
+//     TEST_MESSAGE("LOOP 2");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
 
-    // Check  message
-    TEST_ASSERT_EQUAL_MESSAGE(2, wifiOutputBuffer[0], "2 messages expected"); // it is a long message
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH discovery message expected");
+//     // Check  message
+//     TEST_ASSERT_EQUAL_MESSAGE(2, wifiOutputBuffer[0], "2 messages expected"); // it is a long message
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH discovery message expected");
 
-    TEST_MESSAGE("LOOP 3");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
+//     TEST_MESSAGE("LOOP 3");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
 
-    mockHAAdapterLed *p_Adapter2 = new mockHAAdapterLed("MyLed", A0);
-    p_Adapter2->setup();
-    p_Adapter2->setDevice(p_MyDevice);
+//     mockHAAdapterLed *p_Adapter2 = new mockHAAdapterLed("MyLed", A0);
+//     p_Adapter2->setup();
+//     p_Adapter2->setDevice(p_MyDevice);
 
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
-    p_Adapter2->loop();
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
+//     p_Adapter2->loop();
 
-    // Check  message
-    TEST_ASSERT_EQUAL_MESSAGE(4, wifiOutputBuffer[0], "4 message expected"); // it is a long message
+//     // Check  message
+//     TEST_ASSERT_EQUAL_MESSAGE(4, wifiOutputBuffer[0], "4 message expected"); // it is a long message
 
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(8, wifiOutputBuffer[messageOffset] >> 4, "SUBSCRIBE message expected");
-    messageOffset += messageSize;
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(8, wifiOutputBuffer[messageOffset] >> 4, "SUBSCRIBE message expected");
+//     messageOffset += messageSize;
 
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH discovery message expected");
-    messageOffset += messageSize;
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH discovery message expected");
+//     messageOffset += messageSize;
 
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++]; // skip discovery info
-    messageOffset += messageSize;
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2]; // skip discovery info
+//     messageOffset += messageSize+2;
     
-    messageSize = (wifiOutputBuffer[messageOffset++] << 8) + wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH status message expected");
+//     messageSize = (wifiOutputBuffer[messageOffset+1] << 8) + wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "PUBLISH status message expected");
 
-    TEST_MESSAGE("LOOP 4");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
-    p_Adapter2->loop();
+//     TEST_MESSAGE("LOOP 4");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
+//     p_Adapter2->loop();
 
-    // check no message
-    TEST_ASSERT_EQUAL_MESSAGE(0, wifiOutputBuffer[0] >> 4, "No message expected");
+//     // check no message
+//     TEST_ASSERT_EQUAL_MESSAGE(0, wifiOutputBuffer[0] >> 4, "No message expected");
 
     
 
-    TEST_MESSAGE("LOOP 5");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
+//     TEST_MESSAGE("LOOP 5");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
     
-    // TEST_MESSAGE("BTNPressed");
-    p_Adapter->onBtPressed();
+//     // TEST_MESSAGE("BTNPressed");
+//     p_Adapter->onBtPressed();
     
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
-    p_Adapter2->loop();
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
+//     p_Adapter2->loop();
 
-    // check submit message
-    messageSize = (wifiOutputBuffer[messageOffset++]<<8)+ wifiOutputBuffer[messageOffset++];
-    TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "SUBMIT  message expected");
-    messageOffset+=messageSize;
+//     // check submit message
+//     messageSize = (wifiOutputBuffer[messageOffset+1]<<8)+ wifiOutputBuffer[messageOffset+2];
+//     messageOffset+=2;
+//     TEST_ASSERT_EQUAL_MESSAGE(3, wifiOutputBuffer[messageOffset] >> 4, "SUBMIT  message expected");
+//     messageOffset+=messageSize;
 
-    TEST_MESSAGE("LOOP 6");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    messageOffset = 1;
-    memset(wifiOutputBuffer, 0, 512);
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
-    p_Adapter2->loop();
+//     TEST_MESSAGE("LOOP 6");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     messageOffset = 1;
+//     memset(wifiOutputBuffer, 0, 512);
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
+//     p_Adapter2->loop();
 
-    // check no message
-    TEST_ASSERT_EQUAL_MESSAGE(0, wifiOutputBuffer[0] >> 4, "No message expected");
+//     // check no message
+//     TEST_ASSERT_EQUAL_MESSAGE(0, wifiOutputBuffer[0] >> 4, "No message expected");
 
-    memset(wifiInputBuffer, 0, 60);
-    wifiInputBuffer[0] = 48; // submit qos0 retain0 rplay0
-    wifiInputBuffer[1] = 49; // total length
-    wifiInputBuffer[2] = 0;
-    wifiInputBuffer[3] = 45;
-    memcpy(wifiInputBuffer + 4, "homeassistant/light/portal-MyLed-60909E20/cmd", 45);
-    memcpy(wifiInputBuffer + 4 + 45, "ON", 2);
-    espClient.setReadBuffer(wifiInputBuffer, 51);
+//     memset(wifiInputBuffer, 0, 60);
+//     wifiInputBuffer[0] = 48; // submit qos0 retain0 rplay0
+//     wifiInputBuffer[1] = 49; // total length
+//     wifiInputBuffer[2] = 0;
+//     wifiInputBuffer[3] = 45;
+//     memcpy(wifiInputBuffer + 4, "homeassistant/light/portal-MyLed-60909E20/cmd", 45);
+//     memcpy(wifiInputBuffer + 4 + 45, "ON", 2);
+//     espClient.setReadBuffer(wifiInputBuffer, 51);
 
-    // TEST_MESSAGE("LOOP 7");
-    espClient.setWriteBuffer(wifiOutputBuffer, 512);
-    memset(wifiOutputBuffer, 0, 512);
-    p_MyDevice->loop(WL_CONNECTED);
-    p_Adapter->loop();
-    p_Adapter2->loop();
+//     // TEST_MESSAGE("LOOP 7");
+//     espClient.setWriteBuffer(wifiOutputBuffer, 512);
+//     memset(wifiOutputBuffer, 0, 512);
+//     p_MyDevice->loop(WL_CONNECTED);
+//     p_Adapter->loop();
+//     p_Adapter2->loop();
 
-    TEST_ASSERT_EQUAL_MESSAGE(true, p_Adapter2->m_poweron, "power on callback should have een called");
+//     TEST_ASSERT_EQUAL_MESSAGE(true, p_Adapter2->m_poweron, "power on callback should have een called");
 
-    delete (p_Adapter2);
-    delete (p_Adapter);
-    delete (p_MyDevice);
+//     delete (p_Adapter2);
+//     delete (p_Adapter);
+//     delete (p_MyDevice);
 
-    uint32_t freeAfter = ESP.getFreeHeap();
-    TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
-    free(wifiInputBuffer);
-    free(wifiOutputBuffer);
-}
+//     uint32_t freeAfter = ESP.getFreeHeap();
+//     TEST_ASSERT_EQUAL_INT32_MESSAGE(freeBefore, freeAfter, "Memory leak");
+//     free(wifiInputBuffer);
+//     free(wifiOutputBuffer);
+// }
 
 void setup()
 {
@@ -901,6 +943,7 @@ void setup()
     digitalWrite(LED_BUILTIN, LOW);
 
     delay(500);
+    RUN_TEST(UT_BufferFIFO);
     RUN_TEST(UT_HAUtils_generateId);
     RUN_TEST(UT_HANode_constructor);
     RUN_TEST(UT_HADevice_constructor);
@@ -914,9 +957,8 @@ void setup()
     RUN_TEST(UT_HAComponentDeviceTrigger);
     RUN_TEST(UT_HAAdapter_constructor);
     RUN_TEST(UT_OnHAMessage);
-
-    //RUN_TEST(UC_SETUP);
-    //RUN_TEST(UC_StreamHAMessages);
+    // RUN_TEST(UC_SETUP);
+    // RUN_TEST(UC_StreamHAMessages);
 
     UNITY_END(); // stop unit testing
 }
