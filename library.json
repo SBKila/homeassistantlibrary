@@ -1,6 +1,6 @@
 {
   "name": "HomeAssistantLibrary",
-  "version": "0.1.10",
+  "version": "0.2.1",
   "description": "Library to manage HomeAssistant MQTT protocol",
   "keywords": "ESP8266,HomeAssistant",
   "repository": {
@@ -16,11 +16,10 @@
   ],
   "license": "MIT",
   "homepage": "https://github.com/SBKila/homeassistantlibrary",
-  "dependencies":
-    {
-      "knolleary/PubSubClient": "^2.8",
-      "evert-arias/EasyButton": "^2.0.3"
-    },
+  "dependencies": {
+    "knolleary/PubSubClient": "^2.8",
+    "evert-arias/EasyButton": "^2.0.3"
+  },
   "frameworks": "*",
   "platforms": "espressif8266"
 }
