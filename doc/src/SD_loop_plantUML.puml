@@ -42,16 +42,16 @@ alt Wifi Connected
     HADevice->HANode:onHAConnect
     activate HANode
     loop for all component
-      HANode->HAComponent:_onHAConnect
+      HANode.hAComponent:_onHAConnect
       activate HAComponent
       alt is first connection
         HAComponent->HANode:postDiscoveryMessage
         activate HANode
-        HANode->HAComponent:buildDiscoveryMessage
+        HANode.hAComponent:buildDiscoveryMessage
         activate HAComponent
         return
-        HANode->HANode:patchMessagesWithDeviceInfo
-        HANode->HANode:postMessage
+        HANode.hANode:patchMessagesWithDeviceInfo
+        HANode.hANode:postMessage
         return
       end
 

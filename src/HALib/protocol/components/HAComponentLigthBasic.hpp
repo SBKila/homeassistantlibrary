@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
-#include "HAComponent.hpp"
+#include "HAComponent.h"
+#include "../../arduino/HACallbackFunction.h"
 
 namespace HALIB_NAMESPACE
 {
@@ -29,7 +30,8 @@ namespace HALIB_NAMESPACE
         {
             if (length == 2)
             {
-                if (0 == strncmp_P((char *)payload, PropertyDefaultValue[PROP_PAYLOAD_ON], length))
+                PGM_P expectedPayload = (PGM_P)pgm_read_ptr(&PropertyDefaultValue[PROP_PAYLOAD_ON]);
+                if (0 == strncmp_P((char *)payload, expectedPayload, length))
                 {
                     HAComponentPropertyAction<HA_BASICLIGHT_CALLBACK> *l_pAction = (HAComponentPropertyAction<HA_BASICLIGHT_CALLBACK> *)p_pAction;
                     l_pAction->getCallback()(true);
@@ -37,7 +39,8 @@ namespace HALIB_NAMESPACE
             }
             if (length == 3)
             {
-                if (0 == strncmp_P((char *)payload, PropertyDefaultValue[PROP_PAYLOAD_OFF], length))
+                PGM_P expectedPayload = (PGM_P)pgm_read_ptr(&PropertyDefaultValue[PROP_PAYLOAD_OFF]);
+                if (0 == strncmp_P((char *)payload, expectedPayload, length))
                 {
                     HAComponentPropertyAction<HA_BASICLIGHT_CALLBACK> *l_pAction = (HAComponentPropertyAction<HA_BASICLIGHT_CALLBACK> *)p_pAction;
                     l_pAction->getCallback()(false);
@@ -54,9 +57,9 @@ namespace HALIB_NAMESPACE
         {
             HALIB_COMPONENT_DEBUG_MSG("===>publishState\n");
             char topic[getTopicPath(PROP_STATE_TOPIC) + 1];
-            //HALIB_COMPONENT_DEBUG_MSG_DEC(sizeof(topic));
+            // HALIB_COMPONENT_DEBUG_MSG_DEC(sizeof(topic));
             getTopicPath(PROP_STATE_TOPIC, topic);
-            //HALIB_COMPONENT_DEBUG_MSG(topic);
+            // HALIB_COMPONENT_DEBUG_MSG(topic);
 
             // const char* message =  getProperty(m_stateON?PROP_PAYLOAD_ON:PROP_PAYLOAD_OFF,true);
             // HALIB_COMPONENT_DEBUG_MSG(message);

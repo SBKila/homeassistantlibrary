@@ -59,12 +59,12 @@ loop create all device adapters
 		activate HADevice
 		HADevice->HANode : addComponent
 		activate HANode
-		HANode->HAComponent : setNode
+		HANode.hAComponent : setNode
 		alt if component need HA message entry
 			activate HAComponent
 			HAComponent->HANode:registerHA
 			activate HANode
-			HANode->HANode:postAction
+			HANode.hANode:postAction
 			return
 		end
 		return

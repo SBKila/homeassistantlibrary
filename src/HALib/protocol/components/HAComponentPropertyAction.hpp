@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HAComponentProperty.hpp"
+#include "HAComponentProperty.h"
 
 namespace HALIB_NAMESPACE
 {

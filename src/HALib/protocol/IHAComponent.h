@@ -5,9 +5,10 @@
 namespace HALIB_NAMESPACE
 {
     class IHANode;
-    class  IHAComponent
+    class IHAComponent
     {
     public:
+        virtual ~IHAComponent() {}
         virtual uint32_t getId() = 0;
         virtual void setNode(IHANode *pNode) = 0;
         virtual char *buildDiscoveryTopic(const char *pDiscoveryPrefix, const char *pNodeId = NULL) = 0;

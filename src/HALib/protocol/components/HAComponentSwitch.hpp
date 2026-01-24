@@ -2,8 +2,7 @@
 
 #include <Arduino.h>
 #include <Arduino.h>
-#include "HAComponent.hpp"
-
+#include "HAComponent.h"
 
 namespace HALIB_NAMESPACE
 {
@@ -26,7 +25,7 @@ namespace HALIB_NAMESPACE
         }
 
     protected:
-        void _executeAction(HAComponentProperty *p_pAction, byte *payload, unsigned int length){};
+        void _executeAction(HAComponentProperty *p_pAction, byte *payload, unsigned int length) {};
         void onHAConnect()
         {
             publishState();

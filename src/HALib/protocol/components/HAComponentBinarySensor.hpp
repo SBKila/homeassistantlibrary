@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "HAComponent.hpp"
+#include "HAComponent.h"
 
 namespace HALIB_NAMESPACE
 {
@@ -12,9 +12,8 @@ namespace HALIB_NAMESPACE
         {
             if (DC_NOTDEFINED != pDeviceClass)
             {
-                char *deviceClass = HAUtils::strdup_P(DeviceClassValue[pDeviceClass]);
-                addProperty(PROP_DEVICE_CLASS, deviceClass);
-                free(deviceClass);
+                PGM_P deviceClassPtr = (PGM_P)pgm_read_ptr(&DeviceClassValue[pDeviceClass]);
+                addProperty(PROP_DEVICE_CLASS, deviceClassPtr);
             }
             addProperty(PROP_STATE_TOPIC);
         }

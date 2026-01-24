@@ -1,56 +1,56 @@
 #pragma once
 
-#include "./HAAdapter.hpp"
-#include "../../protocol/components/HAComponentDeviceTrigger.hpp"
+#include "./HAAdapter.h"
+#include "../../protocol/components/HAComponentDeviceTrigger.h"
 #include <EasyButton.h>
-
-
+#include "../../tools/debug.h"
 namespace HALIB_NAMESPACE
 {
     class HAAdapterPushBtn : public HAAdapter
     {
     public:
-        HAAdapterPushBtn(const char *name, uint8_t ioReference) : HAAdapter(name,ioReference)
+        HAAdapterPushBtn(const char *name, uint8_t ioReference) : HAAdapter(name, ioReference), m_Button(ioReference)
         {
             m_pComponent = new HAComponentDeviceTrigger(name);
-            m_pButton = new EasyButton(ioReference);
         }
         virtual ~HAAdapterPushBtn()
         {
-            m_pButton->disableInterrupt();
-            
+            m_Button.disableInterrupt();
             delete (m_pComponent);
-            delete (m_pButton);
         }
         virtual void _setup()
         {
             // DEBUG_PRINT(F("Setup button "));
             // DEBUG_PRINTLN(m_pComponent->getName());
-            
-            if (m_pButton->supportsInterrupt())
+
+            if (m_Button.supportsInterrupt())
             {
-                //DEBUG_PRINTLN("supports Interrupt");
-                m_pButton->enableInterrupt([this]() { HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
+                // DEBUG_PRINTLN("supports Interrupt");
+                m_Button.enableInterrupt([this]()
+                                         { HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
             }
             else
             {
-                //DEBUG_PRINTLN("dont' supports Interrupt");
-                m_pButton->onPressed([this]() { HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
+                // DEBUG_PRINTLN("dont' supports Interrupt");
+                m_Button.onPressed([this]()
+                                   { HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
             }
 
-            m_pButton->begin();
+            m_Button.begin();
         }
         virtual void suspend(boolean state)
         {
-            if (m_pButton->supportsInterrupt()){
+            if (m_Button.supportsInterrupt())
+            {
 
-                if(state)
+                if (state)
                 {
-                    m_pButton->disableInterrupt();
+                    m_Button.disableInterrupt();
                 }
                 else
                 {
-                    m_pButton->enableInterrupt([this]() {HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
+                    m_Button.enableInterrupt([this]()
+                                             {HALIB_COMPONENT_DEBUG_MSG("===>");this->onBtPressed(); });
                 }
             }
         }
@@ -74,7 +74,7 @@ namespace HALIB_NAMESPACE
         // }
 
         // }
-        //void onHAConnect();
+        // void onHAConnect();
 
         virtual void setDevice(HADevice *p_pDevice)
         {
@@ -84,6 +84,6 @@ namespace HALIB_NAMESPACE
     protected:
         HAComponentDeviceTrigger *m_pComponent;
         uint8_t m_DigitalIO;
-        EasyButton *m_pButton;
+        EasyButton m_Button;
     };
 } // namespace HALIB_NAMESPACE
