@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include "IHAAdapter.h"
 #include "../../protocol/components/HAComponentDeviceTrigger.h"
-#include <EasyButton.h>
 
 namespace HALIB_NAMESPACE
 {
