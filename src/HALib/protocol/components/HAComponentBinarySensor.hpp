@@ -8,11 +8,11 @@ namespace HALIB_NAMESPACE
     class HAComponentBinarySensor : public HAComponent
     {
     public:
-        HAComponentBinarySensor(const char *name, DeviceClass pDeviceClass = DC_NOTDEFINED) : HAComponent(name, BINARY_SENSOR)
+        HAComponentBinarySensor(const char *name, uint8_t pDeviceClass = DC_NOTDEFINED) : HAComponent(name, BINARY_SENSOR)
         {
             if (DC_NOTDEFINED != pDeviceClass)
             {
-                PGM_P deviceClassPtr = (PGM_P)pgm_read_ptr(&DeviceClassValue[pDeviceClass]);
+                PGM_P deviceClassPtr = (PGM_P)pgm_read_ptr(&BinarySensorDeviceClassValue[pDeviceClass]);
                 addProperty(PROP_DEVICE_CLASS, deviceClassPtr);
             }
             addProperty(PROP_STATE_TOPIC);

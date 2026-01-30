@@ -11,11 +11,12 @@ namespace HALIB_NAMESPACE
     class HAComponentSensor : public HAComponent
     {
     public:
-        HAComponentSensor(const char *name, DeviceClass pDeviceClass, boolean isRetain) : HAComponent(name, SENSOR)
+        HAComponentSensor(const char *name, uint8_t pDeviceClass, boolean isRetain) : HAComponent(name, SENSOR)
         {
-            PGM_P deviceClassPtr = (PGM_P)pgm_read_ptr(&DeviceClassValue[pDeviceClass]);
+            PGM_P deviceClassPtr = (PGM_P)pgm_read_ptr(&SensorDeviceClassValue[pDeviceClass]);
             addProperty(PROP_DEVICE_CLASS, deviceClassPtr);
             addProperty(PROP_STATE_TOPIC);
+            m_isRetain = isRetain;
         }
         virtual void onHAConnect()
         {

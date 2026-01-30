@@ -10,7 +10,10 @@
 // Architecture Compatibility Helper
 // -------------------------------------------------------------------------
 #if defined(ESP8266)
-#define ISR_PREFIX ICACHE_RAM_ATTR
+#ifndef IRAM_ATTR
+#define IRAM_ATTR ICACHE_RAM_ATTR
+#endif
+#define ISR_PREFIX IRAM_ATTR
 #elif defined(ESP32)
 #define ISR_PREFIX IRAM_ATTR
 #else
@@ -66,14 +69,14 @@ namespace HALIB_NAMESPACE
             // Setup HA sensor for cumulative power
             strcpy(buffer, name);
             strcat(buffer, "_cumulat");
-            m_pCumulaticComponent = new HAComponentSensor(buffer, DC_ENERGY, false);
+            m_pCumulaticComponent = new HAComponentSensor(buffer, SC_ENERGY, false);
             m_pCumulaticComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
             m_pCumulaticComponent->addProperty(PROP_STATE_CLASS, "total_increasing");
 
             // Setup HA sensor for instant power
             strcpy(buffer, name);
             strcat(buffer, "_instant");
-            m_pInstantComponent = new HAComponentSensor(buffer, DC_POWER, false);
+            m_pInstantComponent = new HAComponentSensor(buffer, SC_POWER, false);
             m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kW");
             m_pInstantComponent->addProperty(PROP_STATE_CLASS, "measurement");
 
