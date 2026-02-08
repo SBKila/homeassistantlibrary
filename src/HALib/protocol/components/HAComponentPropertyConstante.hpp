@@ -207,7 +207,8 @@ namespace HALIB_NAMESPACE
         PROP_XY_VALUE_TEMPLATE,
         PROP_TYPE,
         PROP_STYPE,
-        PROP_STATE_CLASS
+        PROP_STATE_CLASS,
+        PROP_ENTITY_CATEGORY
     };
 
     // -------------------------------------------------------------------------

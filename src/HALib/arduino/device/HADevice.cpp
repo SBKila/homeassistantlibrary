@@ -10,7 +10,7 @@ namespace HALIB_NAMESPACE
 
     HADevice::HADevice(const char *pDeviceName, const char *pManuf, const char *pModel, const char *pRelease)
     {
-        HALIB_DEVICE_DEBUG_MSG("Constructor\n");
+        HALIB_DEVICE_DEBUG_MSG("Constructor %s %s\n", __func__, pDeviceName);
         mWifi = &WiFi;
         m_pNode = new HANode(pDeviceName);
         m_pNode->setDeviceInfo(pManuf, pModel, pRelease);
@@ -49,13 +49,13 @@ namespace HALIB_NAMESPACE
         m_MqttClient.setClient(pEthClient);
 
         m_MqttClient.setServer(brokerMqttUrl, brokerMqttPort);
-        HALIB_DEVICE_DEBUG_MSG("MQtt Domain: %s\n", brokerMqttUrl);
+        HALIB_DEVICE_DEBUG_MSG("MQtt Domain: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
         HALIB_DEVICE_DEBUG_MSG("MQtt Port: %d\n", brokerMqttPort);
 
         setMqttUser(brokerMqttLogin);
         setMqttPassword(brokerMqttPwd);
-        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin);
-        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd);
+        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin ? m_brokerMqttLogin : "NULL");
+        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
 
         m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length)
                                  { this->onMQTTMessage(topic, payload, length); });
@@ -194,19 +194,19 @@ namespace HALIB_NAMESPACE
 
         // Apply template
         sprintf_P(deviceId, DEVICEIDENTIFIER_TEMPLATE, nodeName, identifier);
-        HALIB_DEVICE_DEBUG_MSG("deviceId: %s\n", deviceId);
+        HALIB_DEVICE_DEBUG_MSG("deviceId: %s\n", deviceId ? deviceId : "NULL");
 
         const char *willTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
 
         uint8_t willQos = 0;
         boolean willRetain = true;
         const char *willMessage = m_pNode->getProperty(PROP_PAYLOAD_NOT_AVAILABLE);
-        HALIB_DEVICE_DEBUG_MSG("willTopic: %s\n", willTopic);
+        HALIB_DEVICE_DEBUG_MSG("willTopic: %s\n", willTopic ? willTopic : "NULL");
         HALIB_DEVICE_DEBUG_MSG("willQos: %d\n", willQos);
         HALIB_DEVICE_DEBUG_MSG("willRetain: %s\n", (willRetain) ? "TRUE" : "FALSE");
-        HALIB_DEVICE_DEBUG_MSG("willMessage: %s\n", willMessage);
-        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin);
-        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd);
+        HALIB_DEVICE_DEBUG_MSG("willMessage: %s\n", willMessage ? willMessage : "NULL");
+        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin ? m_brokerMqttLogin : "NULL");
+        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
 
         m_MqttClient.disconnect(); //@TODO Really needed ?
         bool status = m_MqttClient.connect(deviceId, m_brokerMqttLogin, m_brokerMqttPwd, willTopic, willQos, willRetain, willMessage, cleanSession);

@@ -39,7 +39,7 @@ namespace HALIB_NAMESPACE
 
             if (NULL != m_pNode)
             {
-                m_pNode->postMessage(topic, m_stateON ? getPropertyValue(PROP_PAYLOAD_ON) : getPropertyValue(PROP_PAYLOAD_OFF), true);
+                m_pNode->postMessage(topic, m_stateON ? getPropertyByKey(PROP_PAYLOAD_ON) : getPropertyByKey(PROP_PAYLOAD_OFF), true);
             }
             else
             {

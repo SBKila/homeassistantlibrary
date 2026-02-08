@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "../tools/debug.h"
 
 namespace HALIB_NAMESPACE
 {

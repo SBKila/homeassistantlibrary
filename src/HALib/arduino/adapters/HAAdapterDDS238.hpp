@@ -124,14 +124,25 @@ namespace HALIB_NAMESPACE
             // Restore only if compliant or new value
             if ((persistence.tag == MAGICTAG) || (persistence.tag == DEFAULTTAG))
             {
-                m_Persistent.cumulative = persistence.cumulative;
-                m_Persistent.ticks = persistence.ticks;
+                if (persistence.cumulative > 999999.9f || persistence.cumulative < 0.0f || isnan(persistence.cumulative))
+                {
+                    HALIB_ADAPTER_DEBUG_MSG("Corruption detected: %f. Reset to 0.\n", persistence.cumulative);
+                    m_Persistent.cumulative = 0.0f;
+                    m_Persistent.ticks = 0;
+                }
+                else
+                {
+                    m_Persistent.cumulative = persistence.cumulative;
+                    m_Persistent.ticks = persistence.ticks;
+                }
                 // Send value to component
                 m_pCumulaticComponent->setValue(m_Persistent.cumulative);
             }
             else
             {
                 HALIB_ADAPTER_DEBUG_MSG("restored with default\n");
+                m_Persistent.cumulative = 0.0f;
+                m_Persistent.ticks = 0;
             }
 
             if (persistence.tag != MAGICTAG)
@@ -143,7 +154,7 @@ namespace HALIB_NAMESPACE
         virtual void loop()
         {
             // Check if ticks happened since last loop
-            if (m_pulseCount > 0)
+            if ((m_pulseCount > 0) && (m_Persistent.cumulative < 999999.9f))
             {
                 int nbTick = 0;
                 unsigned long tickTime = 0;

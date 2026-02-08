@@ -5,8 +5,12 @@ namespace HALIB_NAMESPACE
     HAMessage::HAMessage(const char *p_pTopic, const char *p_pMessage, boolean p_Retain)
         : HAAction(POSTMESSAGE, p_pTopic)
     {
+        message = NULL;
+        retain = false;
+        HALIB_ACTION_DEBUG_MSG("%s %s\n", __func__, p_pMessage);
         setMessage(p_pMessage);
         setRetain(p_Retain);
+        HALIB_ACTION_DEBUG_MSG("%sEND\n", __func__);
     }
 
     HAMessage::HAMessage() : HAAction(POSTMESSAGE)
@@ -30,6 +34,7 @@ namespace HALIB_NAMESPACE
 
     void HAMessage::setMessage(const char *message)
     {
+        HALIB_ACTION_DEBUG_MSG("%s %s\n", __func__, message);
         // Safety: Free previous message if it exists
         if (this->message != NULL)
         {
@@ -41,6 +46,7 @@ namespace HALIB_NAMESPACE
         {
             this->message = strdup(message);
         }
+        HALIB_ACTION_DEBUG_MSG("%sEND\n", __func__);
     }
 
     void HAMessage::setRetain(boolean p_Retain)
