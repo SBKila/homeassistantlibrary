@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
+#include <AsyncMqttClient.h>
 
 // Adjust paths according to your project structure
 #include "../../protocol/node/HANode.h"
@@ -22,7 +22,7 @@ namespace HALIB_NAMESPACE
         ~HADevice();
 
         // Initializes the MQTT client and networking
-        void setup(Client &pEthClient, const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin = NULL, const char *brokerMqttPwd = NULL);
+        void setup(const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin = NULL, const char *brokerMqttPwd = NULL);
 
         // Checks if MQTT is connected
         bool isMqttconnected();
@@ -48,27 +48,34 @@ namespace HALIB_NAMESPACE
         // Returns the device name
         const char *getName();
 
+        // Callbacks AsyncMqtt
+        void _onMqttConnect(bool sessionPresent);
+        void _onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
+        void _onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+
     private:
 #ifdef UNIT_TEST
     public:
 #endif
-        long lastConnect = 0;
+        long lastConnectAttempt = 0;
         boolean isSetup = false;
-        PubSubClient m_MqttClient;
+        boolean hasBeenConnected = false;
+
+        AsyncMqttClient m_MqttClient;
         HANode *m_pNode;
         wl_status_t m_PreviousWifiStatus = WL_IDLE_STATUS;
         wl_status_t m_PreviousOpenHabMqttStatus = WL_DISCONNECTED;
         ESP8266WiFiClass *mWifi = &WiFi;
         HAComponent *m_pRecentltyAddedComponent = NULL;
+
         char *m_brokerMqttLogin = NULL;
         char *m_brokerMqttPwd = NULL;
+        char *m_generatedDeviceId = NULL;
+
         LinkedList<HAComponentProperty *> mProperties;
 
-        // Callback for incoming MQTT messages
-        void onMQTTMessage(char *topic, unsigned char *payload, unsigned int length);
-
         // Connects to the MQTT broker
-        bool connectMQTTServer(boolean cleanSession);
+        void connectMQTTServer(boolean cleanSession);
 
         // Sends a message (HAMessage) to MQTT
         bool postMessage(HAMessage *message);
