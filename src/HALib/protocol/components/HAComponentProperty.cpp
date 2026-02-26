@@ -14,9 +14,7 @@ namespace HALIB_NAMESPACE
             // ESP8266: irom0_text_start is around 0x40200000.
             if ((uint32_t)value >= 0x40200000)
             {
-                // Case 1: Pointer to Flash.
-                // ZERO-COPY STRATEGY: We point directly to the Flash address.
-                // No malloc/strdup needed. This prevents heap fragmentation.
+                // Source is in Flash.
                 HALIB_COMPONENT_DEBUG_MSG("Value is in Flash (PROGMEM), using zero-copy\n");
                 mValue = HAUtils::strdup_P((PGM_P)value);
             }
@@ -43,13 +41,12 @@ namespace HALIB_NAMESPACE
     {
         // Only free memory if we explicitly allocated it (RAM case).
         // Never try to free a Flash pointer.
+        HALIB_COMPONENT_DEBUG_MSG("Destructor: Freeing allocated RAM value\n");
         if (NULL != mValue)
         {
-            HALIB_COMPONENT_DEBUG_MSG("Destructor: Freeing allocated RAM value\n");
-            // Cast const away to free the void* pointer
             free((void *)mValue);
-            mValue = NULL;
         }
+        mValue = NULL;
     }
 
     PGM_P HAComponentProperty::getName()
