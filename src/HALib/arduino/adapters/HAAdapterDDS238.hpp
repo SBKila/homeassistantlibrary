@@ -35,6 +35,7 @@ namespace HALIB_NAMESPACE
     {
     public:
         HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction, boolean average) : HAAdapter(name, ioReference)
+                                                                                                                                                                                        HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction, boolean average, int rtcOffset = -1) : HAAdapter(name, ioReference)
         {
             HALIB_ADAPTER_DEBUG_MSG("Constructor\n");
 
@@ -49,6 +50,7 @@ namespace HALIB_NAMESPACE
 
             m_AverageActive = average;
             m_TickByTenthKW = tickByKW / 10;
+            m_rtcOffset = rtcOffset;
             m_PersistenceFunction = persistentFunction;
 
             // Reset persistent data
@@ -145,6 +147,23 @@ namespace HALIB_NAMESPACE
                 m_Persistent.ticks = 0;
             }
 
+#ifdef ESP8266
+            if (m_rtcOffset >= 0)
+            {
+                DDS238Data rtcData;
+                if (ESP.rtcUserMemoryRead(m_rtcOffset, (uint32_t *)&rtcData, sizeof(DDS238Data)))
+                {
+                    if (rtcData.tag == MAGICTAG)
+                    {
+                        if (!isnan(rtcData.cumulative) && rtcData.cumulative >= m_Persistent.cumulative)
+                        {
+                            HALIB_ADAPTER_DEBUG_MSG("Restored from RTC\n");
+                            m_Persistent = rtcData;
+                        }
+                    }
+                }
+            }
+#endif
             if (persistence.tag != MAGICTAG)
                 m_PersistenceFunction(m_Persistent);
 
@@ -180,14 +199,9 @@ namespace HALIB_NAMESPACE
                 // Instant power management
                 if (0 != m_LastTickTreatedTime) // Skip first tick
                 {
+
                     unsigned long deltaT = tickTime - m_LastTickTreatedTime;
-
-                    if (deltaT < 0) // Handle millis() overflow
-                    {
-                        deltaT = 4294967295 - m_LastTickTreatedTime;
-                        deltaT += tickTime;
-                    }
-
+                    // overflow is automaticly managed because of unsigned according to Gemini
                     if (deltaT > 0)
                     {
                         m_InstantPower = m_AverageActive ? computeAverage(nbTick, deltaT) : computeInstant(nbTick, deltaT);
@@ -200,6 +214,12 @@ namespace HALIB_NAMESPACE
                 m_LastTickTreatedTime = tickTime;
                 // Store data at each tick
                 m_PersistenceFunction(m_Persistent);
+#ifdef ESP8266
+                if (m_rtcOffset >= 0)
+                {
+                    ESP.rtcUserMemoryWrite(m_rtcOffset, (uint32_t *)&m_Persistent, sizeof(DDS238Data));
+                }
+#endif
             }
             else
             {
@@ -225,6 +245,14 @@ namespace HALIB_NAMESPACE
             pinMode(m_pinNumber, INPUT_PULLUP);
         }
 
+        static void ISR_PREFIX isrTrampoline(void *arg)
+        {
+            HAAdapterDDS238 *instance = static_cast<HAAdapterDDS238 *>(arg);
+            if (instance)
+            {
+                instance->onTick();
+            }
+        }
         virtual void suspend(boolean state)
         {
             if (state)
@@ -233,12 +261,54 @@ namespace HALIB_NAMESPACE
             }
             else
             {
-                attachInterrupt(
+                attachInterruptArg(
                     digitalPinToInterrupt(m_pinNumber),
-                    [this]() ISR_PREFIX
-                    { this->onTick(); },
+                    isrTrampoline,
+                    this,
                     CHANGE);
             }
+        }
+
+        virtual int toJsonDebug(char *jsonBuffer, size_t length)
+        {
+            return snprintf_P(jsonBuffer, length,
+                              PSTR("{\"type\":\"dds\",\"pin\":%d,\"pt\":%u,\"pc\":%.2f,\"lint\":%lu,\"pls\":%lu,\"lplsd\":%lu,\"ltt\":%lu,\"ltd\":%lu}"),
+                              m_pinNumber,
+                              m_Persistent.ticks,
+                              m_Persistent.cumulative,
+                              lastInterruptTime,
+                              m_pulseCount,
+                              lastpulseduration,
+                              m_LastTickTreatedTime,
+                              m_LastTickDeltaTime);
+        };
+        virtual String stringProcessor(const String &variable)
+        {
+            if (variable == "PIN")
+            {
+                return String(m_pinNumber); // Instant value for page load
+            }
+            if (variable == "LASTTT")
+            {
+                return String(lastInterruptTime); // Instant value for page load
+            }
+            if (variable == "PULSE")
+            {
+                return String(m_pulseCount); // Instant value for page load
+            }
+            if (variable == "LASTPLSD")
+            {
+                return String(lastpulseduration); // Instant value for page load
+            }
+            if (variable == "LASTDELTATT")
+            {
+                return String(m_LastTickDeltaTime); // Instant value for page load
+            }
+            if (variable == "LASTTREATT")
+            {
+                return String(m_LastTickTreatedTime); // Instant value for page load
+            }
+            return "";
         }
 
     protected:
@@ -283,6 +353,7 @@ namespace HALIB_NAMESPACE
         InstantMeasure m_AverageDataSet;
         BufferFIFO<InstantMeasure> m_AverageBuffer;
 
+        int m_rtcOffset;
         HA_DDS238_PERSISTENT_FUNCTION m_PersistenceFunction;
         HADevice *m_pDevice;
         HAComponentSensor *m_pCumulaticComponent;
@@ -300,6 +371,8 @@ namespace HALIB_NAMESPACE
         unsigned long m_LastTickTreatedTime = 0;
         unsigned long m_LastTickDeltaTime = 0;
         float m_InstantPower = 0;
+        unsigned long lastInterruptTime = 0;
+        unsigned long lastpulseduration = 0;
 
         /**
          * Interrupt Service Routine for S0 Pulse Counting.
@@ -309,7 +382,6 @@ namespace HALIB_NAMESPACE
             unsigned long now = millis();
 
             // 1. "Software Debounce" / Rate Limiting (10ms)
-            static unsigned long lastInterruptTime = 0;
             if ((now - lastInterruptTime) < 10)
             {
                 return;
@@ -329,10 +401,10 @@ namespace HALIB_NAMESPACE
                 // RISING EDGE (End of Active-Low Pulse)
                 if (m_pulseStartTime != 0)
                 {
-                    unsigned long duration = now - m_pulseStartTime;
+                    lastpulseduration = now - m_pulseStartTime;
 
                     // 3. Validation (EN 62053-31 Standard: >30ms)
-                    if (duration >= 30)
+                    if (lastpulseduration >= 30)
                     {
                         m_pulseCount++;
                         m_lastPulseTimestamp = now;
