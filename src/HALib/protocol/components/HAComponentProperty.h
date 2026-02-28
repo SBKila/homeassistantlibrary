@@ -36,6 +36,6 @@ namespace HALIB_NAMESPACE
 
     private:
         HAComponentPropertyKey mName;
-        char *mValue;
+        const char *mValue;
     };
 } // namespace HALIB_NAMESPACE

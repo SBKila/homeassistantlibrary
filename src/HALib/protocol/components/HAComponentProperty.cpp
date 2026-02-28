@@ -1,61 +1,56 @@
 #include "HAComponentProperty.h"
 #include "../../tools/HAUtils.h"
-
-// We include this to ensure compatibility if other types are needed,
-// though strictly speaking Constante.hpp handles most keys.
 #include "HAComponentType.h"
-
 namespace HALIB_NAMESPACE
 {
     HAComponentProperty::HAComponentProperty(HAComponentPropertyKey name, const char *value)
     {
         mName = name;
+        HALIB_COMPONENT_DEBUG_MSG("Constructor: name=%d, value=%s\n", name, (value != NULL) ? value : "NULL");
         if (NULL != value)
         {
-            // --- ESP8266 MEMORY DETECTION LOGIC ---
-            // On ESP8266, Flash memory is mapped starting at 0x40200000.
-            // If the pointer address is higher than this, it points to Flash (PROGMEM).
+            // --- ESP Memory Optimization Logic ---
+            // Check memory address to determine if it is Flash (PROGMEM) or RAM.
+            // ESP8266: irom0_text_start is around 0x40200000.
             if ((uint32_t)value >= 0x40200000)
             {
-                // Case: Pointer to Flash (PROGMEM)
-                // Use helper to allocate RAM and copy from Flash safely
+                // Source is in Flash.
+                HALIB_COMPONENT_DEBUG_MSG("Value is in Flash (PROGMEM), using zero-copy\n");
                 mValue = HAUtils::strdup_P((PGM_P)value);
             }
             else
             {
-                // Case: Pointer to RAM
-                // Use standard duplication
+                // Case 2: Pointer to RAM.
+                // The source is likely a temporary buffer (stack/heap).
+                // We MUST copy it to our own heap storage to ensure persistence.
+                HALIB_COMPONENT_DEBUG_MSG("Value is in RAM, copying to managed heap\n");
                 mValue = strdup(value);
             }
         }
         else
         {
-            // Case: NULL value provided
-            // Load the default value associated with this key from Flash
+            // Case 3: No value provided (NULL).
+            // Use the default value defined in PROGMEM (PropertyDefaultValue table).
+            HALIB_COMPONENT_DEBUG_MSG("No value provided, using default from PROGMEM\n");
             PGM_P defaultValuePtr = (PGM_P)pgm_read_ptr(&PropertyDefaultValue[mName]);
-
-            // Allocate and copy the default value (using PROGMEM functions)
-            // Note: We avoid double allocation by doing it manually here or using HAUtils::strdup_P
-            size_t len = strlen_P(defaultValuePtr);
-            mValue = (char *)malloc(len + 1);
-            if (mValue != NULL)
-            {
-                strcpy_P(mValue, defaultValuePtr);
-            }
+            mValue = HAUtils::strdup_P((PGM_P)defaultValuePtr);
         }
     }
 
     HAComponentProperty::~HAComponentProperty()
     {
+        // Only free memory if we explicitly allocated it (RAM case).
+        // Never try to free a Flash pointer.
+        HALIB_COMPONENT_DEBUG_MSG("Destructor: Freeing allocated RAM value\n");
         if (NULL != mValue)
         {
-            free(mValue);
+            free((void *)mValue);
         }
+        mValue = NULL;
     }
 
     PGM_P HAComponentProperty::getName()
     {
-        // Read the pointer from the pointer array in Flash
         return (PGM_P)pgm_read_ptr(&DiscoveryMessageKeyLabel[mName]);
     }
 
@@ -81,24 +76,25 @@ namespace HALIB_NAMESPACE
 
     size_t HAComponentProperty::getJson(char **ppJsonBuffer)
     {
-        // 1. Retrieve the property label (key) from Flash
         PGM_P keyLabel = (PGM_P)pgm_read_ptr(&DiscoveryMessageKeyLabel[mName]);
 
-        // 2. Calculate the required length
-        // Format is either "key":"value" or "key":value (if object)
-        size_t length = ((*mValue == '{') ? 3 : 5) + strlen_P(keyLabel) + strlen(mValue);
+        // Calculate length.
+        // Note: strlen works on Flash pointers on ESP8266/ESP32 transparently.
+        size_t valueLen = strlen(mValue);
+        size_t length = ((*mValue == '{') ? 3 : 5) + strlen_P(keyLabel) + valueLen;
 
         if (NULL != ppJsonBuffer)
         {
+            // Use sprintf_P with %s. It handles both RAM and Flash pointers correctly
+            // on this architecture, provided the pointer is valid.
             if (*mValue == '{')
             {
-                // It is a JSON object (starts with {) - No quotes around value
-                // Note: On ESP8266, sprintf_P can handle PGM_P directly for %s
+                // JSON Object format: "key":value
                 sprintf_P(*ppJsonBuffer, PROPERTY_TEMPLATE_OBJECT, keyLabel, mValue);
             }
             else
             {
-                // It is a String - Quotes around value
+                // JSON String format: "key":"value"
                 sprintf_P(*ppJsonBuffer, PROPERTY_TEMPLATE_STRING, keyLabel, mValue);
             }
         }

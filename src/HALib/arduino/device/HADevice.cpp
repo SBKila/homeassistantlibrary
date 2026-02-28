@@ -3,6 +3,8 @@
 #include "../../tools/debug.h"
 #include "../../tools/HAUtils.h"
 
+#define WILLQOS 0
+
 namespace HALIB_NAMESPACE
 {
     // Moved to CPP to avoid multiple definition errors
@@ -10,12 +12,29 @@ namespace HALIB_NAMESPACE
 
     HADevice::HADevice(const char *pDeviceName, const char *pManuf, const char *pModel, const char *pRelease)
     {
-        HALIB_DEVICE_DEBUG_MSG("Constructor\n");
+        HALIB_DEVICE_DEBUG_MSG("Constructor %s %s\n", __func__, pDeviceName);
         mWifi = &WiFi;
         m_pNode = new HANode(pDeviceName);
         m_pNode->setDeviceInfo(pManuf, pModel, pRelease);
         m_brokerMqttLogin = NULL;
         m_brokerMqttPwd = NULL;
+
+        // Generate Home Assistant Device Id
+        uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
+        const char *nodeName = m_pNode->getName();
+        m_generatedDeviceId = (char *)calloc(strlen(nodeName) + 10, sizeof(char));
+        sprintf_P(m_generatedDeviceId, DEVICEIDENTIFIER_TEMPLATE, nodeName, identifier);
+
+        m_MqttClient.setClientId(m_generatedDeviceId);
+
+        // attach MQTT Async callback
+        m_MqttClient.onConnect([this](bool sp)
+                               { this->_onMqttConnect(sp); });
+        m_MqttClient.onDisconnect([this](AsyncMqttClientDisconnectReason r)
+                                  { this->_onMqttDisconnect(r); });
+        m_MqttClient.onMessage([this](char *t, char *p, AsyncMqttClientMessageProperties prop, size_t len, size_t i, size_t tot)
+                               { this->_onMqttMessage(t, p, prop, len, i, tot); });
+
         HALIB_DEVICE_DEBUG_MSG("ConstructorEND\n");
     }
 
@@ -25,40 +44,29 @@ namespace HALIB_NAMESPACE
         delete m_pNode;
 
         if (NULL != m_brokerMqttLogin)
-        {
             free(m_brokerMqttLogin);
-        }
-        if (NULL != m_brokerMqttPwd)
-        {
+
+        if (m_brokerMqttPwd)
             free(m_brokerMqttPwd);
-        }
+
+        if (m_generatedDeviceId)
+            free(m_generatedDeviceId);
+
         HAUtils::deleteProperties(mProperties);
         HALIB_DEVICE_DEBUG_MSG("DestructorEND\n");
     }
 
-    void HADevice::setup(Client &pEthClient, const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin, const char *brokerMqttPwd)
+    void HADevice::setup(const char *brokerMqttUrl, const int brokerMqttPort, const char *brokerMqttLogin, const char *brokerMqttPwd)
     {
         HALIB_DEVICE_DEBUG_MSG("Setup\n");
 
-        // Disconnect before changing settings
-        if (isMqttconnected())
-        {
-            m_MqttClient.disconnect();
-        }
-
-        m_MqttClient.setClient(pEthClient);
-
         m_MqttClient.setServer(brokerMqttUrl, brokerMqttPort);
-        HALIB_DEVICE_DEBUG_MSG("MQtt Domain: %s\n", brokerMqttUrl);
+        HALIB_DEVICE_DEBUG_MSG("MQtt Domain: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
         HALIB_DEVICE_DEBUG_MSG("MQtt Port: %d\n", brokerMqttPort);
-
         setMqttUser(brokerMqttLogin);
         setMqttPassword(brokerMqttPwd);
-        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin);
-        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd);
-
-        m_MqttClient.setCallback([this](char *topic, byte *payload, unsigned int length)
-                                 { this->onMQTTMessage(topic, payload, length); });
+        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin ? m_brokerMqttLogin : "NULL");
+        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
 
         isSetup = true;
         HALIB_DEVICE_DEBUG_MSG("SetupEND\n");
@@ -109,28 +117,16 @@ namespace HALIB_NAMESPACE
             if (!m_MqttClient.connected())
             {
                 // MQTT not connected, retry every 10 seconds
-                unsigned long delta = millis() - lastConnect;
-                if ((delta > 10000))
+                unsigned long now = millis();
+                if (now - lastConnectAttempt > 10000)
                 {
-                    if (connectMQTTServer(lastConnect != 0))
-                    {
-                        HALIB_DEVICE_DEBUG_MSG("=> mqtt reconnected\n");
-                        sendAvailability(true);
-                        m_pNode->onHAConnect(true);
-                    }
-                    else
-                    {
-                        // Unable to connect to MQTT server
-                        /* @TODO error management back to setup mode ?*/
-                        m_pNode->onHAConnect(false);
-                    }
-                    lastConnect = millis();
+                    lastConnectAttempt = now;
+                    connectMQTTServer(!hasBeenConnected);
                 }
             }
             else
             {
                 // MQTT still connected
-                lastConnect = millis();
                 treatActions();
 
                 // If new component added, resend OnConnect
@@ -140,7 +136,6 @@ namespace HALIB_NAMESPACE
                     m_pRecentltyAddedComponent = NULL;
                 }
             }
-            m_MqttClient.loop();
         }
         m_PreviousWifiStatus = wifiStatus;
     }
@@ -175,45 +170,54 @@ namespace HALIB_NAMESPACE
     {
         return m_pNode->getName();
     }
-
-    void HADevice::onMQTTMessage(char *topic, unsigned char *payload, unsigned int length)
+    void HADevice::_onMqttConnect(bool sessionPresent)
     {
-        HALIB_DEVICE_DEBUG_MSG("onMQTTMessage\n");
-        m_pNode->onHAMessage(topic, payload, length);
+        HALIB_DEVICE_DEBUG_MSG("=> Mqtt connected\n");
+        sendAvailability(true);
+        m_pNode->onHAConnect(true);
+        hasBeenConnected = true;
     }
 
-    bool HADevice::connectMQTTServer(boolean cleanSession)
+    void HADevice::_onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
     {
-        uint32_t identifier = ESP.getChipId() ^ ESP.getFlashChipId();
-        const char *nodeName = m_pNode->getName();
+        HALIB_DEVICE_DEBUG_MSG("=> Mqtt disconnected (reason: %d)\n", (int)reason);
+        m_pNode->onHAConnect(false);
+    }
 
-        HALIB_DEVICE_DEBUG_MSG("mqtt connecting with :\n");
-        // <node_name>-identifier
-        int deviceIdLength = strlen(nodeName) + 1 + 8 + 1;
-        char *deviceId = (char *)calloc(deviceIdLength, sizeof(char));
+    void HADevice::_onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
+    {
+        HALIB_DEVICE_DEBUG_MSG("onMQTTMessage\n");
+        m_pNode->onHAMessage(topic, (uint8_t *)payload, len);
+    }
 
-        // Apply template
-        sprintf_P(deviceId, DEVICEIDENTIFIER_TEMPLATE, nodeName, identifier);
-        HALIB_DEVICE_DEBUG_MSG("deviceId: %s\n", deviceId);
+    void HADevice::connectMQTTServer(boolean cleanSession)
+    {
+        HALIB_DEVICE_DEBUG_MSG("Mqtt connecting...\n");
 
+        // Configuration du LWT (Last Will and Testament)
         const char *willTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
-
-        uint8_t willQos = 0;
-        boolean willRetain = true;
         const char *willMessage = m_pNode->getProperty(PROP_PAYLOAD_NOT_AVAILABLE);
-        HALIB_DEVICE_DEBUG_MSG("willTopic: %s\n", willTopic);
-        HALIB_DEVICE_DEBUG_MSG("willQos: %d\n", willQos);
-        HALIB_DEVICE_DEBUG_MSG("willRetain: %s\n", (willRetain) ? "TRUE" : "FALSE");
-        HALIB_DEVICE_DEBUG_MSG("willMessage: %s\n", willMessage);
-        HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin);
-        HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd);
 
-        m_MqttClient.disconnect(); //@TODO Really needed ?
-        bool status = m_MqttClient.connect(deviceId, m_brokerMqttLogin, m_brokerMqttPwd, willTopic, willQos, willRetain, willMessage, cleanSession);
-        HALIB_DEVICE_DEBUG_MSG("mqtt connection status: %s\n", (status) ? "true" : "false");
+        if (willTopic && willMessage)
+        {
 
-        free(deviceId);
-        return status;
+            boolean willRetain = true;
+            m_MqttClient.setWill(willTopic, WILLQOS, willRetain, willMessage);
+            HALIB_DEVICE_DEBUG_MSG("willTopic: %s\n", willTopic ? willTopic : "NULL");
+            HALIB_DEVICE_DEBUG_MSG("willQos: %d\n", WILLQOS);
+            HALIB_DEVICE_DEBUG_MSG("willRetain: %s\n", (willRetain) ? "TRUE" : "FALSE");
+            HALIB_DEVICE_DEBUG_MSG("willMessage: %s\n", willMessage ? willMessage : "NULL");
+        }
+
+        if (m_brokerMqttLogin && m_brokerMqttPwd)
+        {
+            m_MqttClient.setCredentials(m_brokerMqttLogin, m_brokerMqttPwd);
+            HALIB_DEVICE_DEBUG_MSG("Login: %s\n", m_brokerMqttLogin ? m_brokerMqttLogin : "NULL");
+            HALIB_DEVICE_DEBUG_MSG("Pwd: %s\n", m_brokerMqttPwd ? m_brokerMqttPwd : "NULL");
+        }
+
+        m_MqttClient.setCleanSession(cleanSession);
+        m_MqttClient.connect();
     }
 
     bool HADevice::postMessage(HAMessage *message)
@@ -222,30 +226,11 @@ namespace HALIB_NAMESPACE
         boolean success = false;
         if (m_MqttClient.connected())
         {
-            const char *offset = message->getMessage();
-            const char *topic = message->getTopic();
-
-            size_t messageLength = strlen(offset);
-
-            if (MQTT_MAX_PACKET_SIZE < (messageLength + 2 + strlen(topic)))
-            {
-                // Message too long, using beginPublish/write/endPublish
-                success = m_MqttClient.beginPublish(topic, messageLength, 0);
-                while (success && (0 != messageLength))
-                {
-                    int sentdata = 0;
-                    sentdata = m_MqttClient.write((byte *)offset, messageLength);
-                    success = 0 != sentdata;
-                    offset += sentdata;
-                    messageLength = strlen(offset);
-                }
-                m_MqttClient.endPublish();
-            }
-            else
-            {
-                // Short Message, standard publish
-                success = m_MqttClient.publish(topic, offset);
-            }
+            success = (m_MqttClient.publish(
+                           message->getTopic(),
+                           0,
+                           false,
+                           message->getMessage()) > 0);
         }
         HALIB_DEVICE_DEBUG_MSG("postMessageEND (%s)\n", (success) ? "true" : "false");
         return success;
@@ -257,7 +242,7 @@ namespace HALIB_NAMESPACE
         if (p_pCmd->isSubscribtion())
         {
             HALIB_DEVICE_DEBUG_MSG("Subscription to %s\n", p_pCmd->getTopic());
-            success = m_MqttClient.subscribe(p_pCmd->getTopic());
+            success = (m_MqttClient.subscribe(p_pCmd->getTopic(), WILLQOS) > 0);
         }
         else
         {
@@ -318,15 +303,16 @@ namespace HALIB_NAMESPACE
 
     bool HADevice::sendAvailability(boolean available)
     {
+        boolean success = false;
         HALIB_DEVICE_DEBUG_MSG("sendAvailability\n");
         const char *availabilityTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
         const char *availabilityMessage = m_pNode->getProperty(available ? PROP_PAYLOAD_AVAILABLE : PROP_PAYLOAD_NOT_AVAILABLE);
         HALIB_DEVICE_DEBUG_MSG("Topic: %s\n", availabilityTopic);
         HALIB_DEVICE_DEBUG_MSG("Message: %s\n", availabilityMessage);
 
-        m_MqttClient.publish(availabilityTopic, availabilityMessage, true);
+        success = (m_MqttClient.publish(availabilityTopic, WILLQOS, true, availabilityMessage) > 0);
 
-        HALIB_DEVICE_DEBUG_MSG("sendAvailabilityEND\n");
+        HALIB_DEVICE_DEBUG_MSG("sendAvailabilityEND (%s)\n", (success) ? "true" : "false");
         return true;
     }
 

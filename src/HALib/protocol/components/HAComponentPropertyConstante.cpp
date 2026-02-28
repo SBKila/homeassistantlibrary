@@ -191,6 +191,7 @@ namespace HALIB_NAMESPACE
     const char PROP_VALUE_TYPE[] PROGMEM = "type";
     const char PROP_VALUE_STYPE[] PROGMEM = "stype";
     const char PROP_VALUE_STATE_CLASS[] PROGMEM = "state_class";
+    const char PROP_VALUE_ENTITY_CATEGORY[] PROGMEM = "entity_category";
 
     const static char DEFAULT_VALUE_EMPTY[] PROGMEM = "";
     const static char DEFAULT_VALUE_ROOT_TOPIC[] PROGMEM = "";
@@ -571,7 +572,9 @@ namespace HALIB_NAMESPACE
         PROP_VALUE_XY_VALUE_TEMPLATE,
         PROP_VALUE_TYPE,
         PROP_VALUE_STYPE,
-        PROP_VALUE_STATE_CLASS};
+        PROP_VALUE_STATE_CLASS,
+        PROP_VALUE_ENTITY_CATEGORY,
+    };
 
     PGM_P PropertyDefaultValue[] PROGMEM = {
         DEFAULT_VALUE_ROOT_TOPIC,

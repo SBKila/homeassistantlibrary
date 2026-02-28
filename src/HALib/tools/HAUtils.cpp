@@ -52,7 +52,7 @@ namespace HALIB_NAMESPACE
     const char *HAUtils::getProperty(LinkedList<HAComponentProperty *> &pProperties, HAComponentPropertyKey name)
     {
         // Create a temporary object for the search
-        HAComponentProperty propertyToFind(name, "");
+        HAComponentProperty propertyToFind(name, NULL);
 
         int propertyIndex = pProperties.find(&propertyToFind, true);
 

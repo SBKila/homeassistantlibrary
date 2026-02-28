@@ -6,8 +6,6 @@
 #include "HAComponentType.h"
 #include "HAComponentProperty.h"
 #include "HAComponentPropertyAction.hpp"
-// Note: We include the base Property class.
-// Specific Action/Sensor properties are usually only needed in the implementation or by the user.
 
 namespace HALIB_NAMESPACE
 {
@@ -23,7 +21,7 @@ namespace HALIB_NAMESPACE
         // Destructor: Cleans up properties and actions
         virtual ~HAComponent();
 
-        // Returns the name of the component (stored in properties)
+        // Returns the name of the component
         const char *getName();
 
         // Returns the unique 32-bit ID of the component
@@ -32,10 +30,10 @@ namespace HALIB_NAMESPACE
         // Links this component to a parent Node (device)
         virtual void setNode(IHANode *pNnode);
 
-        // Builds the MQTT topic for Home Assistant discovery
+        // Builds the MQTT topic for Home Assistant discovery (Allocates memory!)
         virtual char *buildDiscoveryTopic(const char *pDiscoveryPrefix, const char *pNodeId = NULL);
 
-        // Builds the JSON payload for Home Assistant discovery
+        // Builds the JSON payload for Home Assistant discovery (Allocates memory!)
         virtual char *buildDiscoveryMessage();
 
         // Handles incoming MQTT messages targeted at this component
@@ -55,6 +53,7 @@ namespace HALIB_NAMESPACE
         void addAction(HAComponentProperty *p_pProperty);
 
         // Adds a property to the component (e.g., state topic, unique_id)
+        // Returns a pointer to the created property.
         HAComponentProperty *addProperty(HAComponentPropertyKey pName, const char *pValue = NULL);
 
         // Methods exposed publicly only for Unit Testing

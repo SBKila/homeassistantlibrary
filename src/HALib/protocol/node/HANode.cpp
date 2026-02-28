@@ -121,7 +121,7 @@ namespace HALIB_NAMESPACE
 
     void HANode::postAutoDiscovery()
     {
-        // HALIB_NODE_DEBUG_MSG("===>postAutoDiscovery\n");
+        HALIB_NODE_DEBUG_MSG("%s\n", __func__);
 
         char *tempDeviceInfo = HAUtils::propertyListToJson(mProperties);
         size_t deviceInfoLength = strlen(tempDeviceInfo) - 2; // -2 to remove opening and closing braces {}
@@ -154,10 +154,12 @@ namespace HALIB_NAMESPACE
             free(discoveryMessage);
         }
         free(tempDeviceInfo);
+        HALIB_NODE_DEBUG_MSG("%sEND\n", __func__);
     }
 
     void HANode::postDiscoveryMessage(IHAComponent *pComponent)
     {
+        HALIB_NODE_DEBUG_MSG("%s\n", __func__);
         // HALIB_NODE_DEBUG_MSG("===>postDiscoveryMessage\n");
         char *tempDeviceInfo = HAUtils::propertyListToJson(mProperties);
         size_t deviceInfoLength = strlen(tempDeviceInfo) - 2;
@@ -179,11 +181,11 @@ namespace HALIB_NAMESPACE
 
             free(componentDiscoveryMessage);
         }
-
         postMessage(new HAMessage(topic, discoveryMessage, true));
         free(topic);
         free(discoveryMessage);
         free(tempDeviceInfo);
+        HALIB_NODE_DEBUG_MSG("%sEND\n", __func__);
     }
 
     bool HANode::onHAMessage(const char *topic, const byte *p_pPayload, const unsigned int length)
@@ -203,6 +205,7 @@ namespace HALIB_NAMESPACE
 
     void HANode::postMessage(HAMessage *pMessage)
     {
+        HALIB_NODE_DEBUG_MSG("%s\n", __func__);
         // Only queue messages if connected, unless they are retained messages (which must be sent on connect)
         if (mIsHAConnected || pMessage->isRetain())
         {
@@ -212,6 +215,7 @@ namespace HALIB_NAMESPACE
         {
             delete pMessage;
         }
+        HALIB_NODE_DEBUG_MSG("%sEND\n", __func__);
     }
 
     void HANode::onHAConnect(boolean isConnected)
@@ -230,6 +234,7 @@ namespace HALIB_NAMESPACE
 
     int HANode::getDiscoveryMessages(HAMessage *pMessages)
     {
+        HALIB_NODE_DEBUG_MSG("%s\n", __func__);
         if (NULL != pMessages)
         {
             for (int index = 0; index < mComponents.getSize(); index++)
@@ -245,6 +250,7 @@ namespace HALIB_NAMESPACE
                 free(discoveryMessage);
             }
         }
+        HALIB_NODE_DEBUG_MSG("%sEND\n", __func__);
         return mComponents.getSize();
     }
 

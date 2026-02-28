@@ -5,6 +5,7 @@
 #include "../protocol/components/HAComponentProperty.h"
 #include "../protocol/components/HAComponentType.h"
 #include "../tools/LinkedList.hpp"
+#include "debug.h"
 
 namespace HALIB_NAMESPACE
 {
