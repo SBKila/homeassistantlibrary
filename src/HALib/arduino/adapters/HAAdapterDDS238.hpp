@@ -35,7 +35,6 @@ namespace HALIB_NAMESPACE
     {
     public:
         HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction, boolean average) : HAAdapter(name, ioReference)
-                                                                                                                                                                                        HAAdapterDDS238(const char *name, uint8_t ioReference, ushort tickByKW, ushort voltage, ushort maxAmp, HA_DDS238_PERSISTENT_FUNCTION persistentFunction, boolean average, int rtcOffset = -1) : HAAdapter(name, ioReference)
         {
             HALIB_ADAPTER_DEBUG_MSG("Constructor\n");
 
@@ -50,7 +49,6 @@ namespace HALIB_NAMESPACE
 
             m_AverageActive = average;
             m_TickByTenthKW = tickByKW / 10;
-            m_rtcOffset = rtcOffset;
             m_PersistenceFunction = persistentFunction;
 
             // Reset persistent data
@@ -103,6 +101,12 @@ namespace HALIB_NAMESPACE
             }
             delete m_pCumulaticComponent;
             delete m_pInstantComponent;
+        }
+
+        size_t setupRTCPersistence(int rtcOffset)
+        {
+            m_rtcOffset = rtcOffset;
+            return sizeof(DDS238Data);
         }
 
         virtual void setDevice(HADevice *p_pDevice)
