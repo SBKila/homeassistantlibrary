@@ -313,7 +313,7 @@ namespace HALIB_NAMESPACE
         success = (m_MqttClient.publish(availabilityTopic, WILLQOS, true, availabilityMessage) > 0);
 
         HALIB_DEVICE_DEBUG_MSG("sendAvailabilityEND (%s)\n", (success) ? "true" : "false");
-        return true;
+        return success;
     }
 
 } // namespace HALIB_NAMESPACE
