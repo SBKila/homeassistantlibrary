@@ -12,6 +12,7 @@
 #include "HALib/protocol/components/HAComponentBinarySensor.hpp"
 #include "HALib/protocol/components/HAComponentDeviceTrigger.h"
 #include "HALib/protocol/components/HAComponentSensor.hpp"
+#include "HALib/protocol/components/HAComponentTextSensor.hpp"
 
 namespace HALib
 {
@@ -25,5 +26,6 @@ namespace HALib
     using HALIB_NAMESPACE::HAComponentProperty;
     using HALIB_NAMESPACE::HAComponentPropertyKey;
     using HALIB_NAMESPACE::HAComponentSensor;
+    using HALIB_NAMESPACE::HAComponentTextSensor;
     using HALIB_NAMESPACE::HADevice;
 }
