@@ -276,7 +276,7 @@ namespace HALIB_NAMESPACE
         virtual int toJsonDebug(char *jsonBuffer, size_t length)
         {
             return snprintf_P(jsonBuffer, length,
-                              PSTR("{\"type\":\"dds\",\"pin\":%d,\"pt\":%u,\"pc\":%.2f,\"lint\":%lu,\"pls\":%lu,\"lplsd\":%lu,\"ltt\":%lu,\"ltd\":%lu}"),
+                              PSTR("{\"type\":\"dds\",\"pin\":%d,\"pt\":%u,\"pc\":%.2f,\"lint\":%lu,\"pls\":%lu,\"lplsd\":%lu,\"ltt\":%lu,\"ltd\":%lu,\"ip\":%.2f}"),
                               m_pinNumber,
                               m_Persistent.ticks,
                               m_Persistent.cumulative,
@@ -284,8 +284,13 @@ namespace HALIB_NAMESPACE
                               m_pulseCount,
                               lastpulseduration,
                               m_LastTickTreatedTime,
-                              m_LastTickDeltaTime);
+                              m_LastTickDeltaTime,
+                              m_InstantPower);
         };
+        virtual float getInstantPower() const
+        {
+            return m_InstantPower;
+        }
         virtual String stringProcessor(const String &variable)
         {
             if (variable == "PIN")
@@ -311,6 +316,10 @@ namespace HALIB_NAMESPACE
             if (variable == "LASTTREATT")
             {
                 return String(m_LastTickTreatedTime); // Instant value for page load
+            }
+            if (variable == "INSTANTPOWER")
+            {
+                return String(m_InstantPower); // Instant value for page load
             }
             return "";
         }
