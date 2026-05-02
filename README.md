@@ -16,7 +16,7 @@ Unlike other libraries, HALib uses an **Adapter pattern** to separate hardware l
     * **HAComponent:** Represents the entity in Home Assistant (Sensor, Text Sensor, Switch, Binary Sensor). They hold the state, generate topics, and expose their behavior via Discovery.
 * **Built-in Adapters:**
     * ⚡ **DDS238:** S0 Pulse counter for energy meters (EN 62053-31 compliant) with persistence support.
-    * 🔘 **PushBtn:** Button management with debounce and event triggering (relies on `EasyButton`).
+    * 🔘 **PushBtn:** Button management with debounce and event triggering.
     * 💡 **Led:** Simple LED control and state feedback.
 
 ## 📖 How It Works
@@ -90,5 +90,4 @@ board = esp32dev
 framework = arduino
 lib_deps =
     sbkila/HomeAssistantLibrary
-    evert-arias/EasyButton @ ^2.0.1 ; Required only if using PushBtn Adapter
 ```

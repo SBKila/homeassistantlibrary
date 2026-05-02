@@ -193,6 +193,7 @@ namespace HALIB_NAMESPACE
     void HADevice::connectMQTTServer(boolean cleanSession)
     {
         HALIB_DEVICE_DEBUG_MSG("Mqtt connecting...\n");
+        m_MqttClient.disconnect(true);
 
         // Configuration du LWT (Last Will and Testament)
         const char *willTopic = m_pNode->getProperty(PROP_AVAILABILITY_TOPIC);
@@ -229,7 +230,7 @@ namespace HALIB_NAMESPACE
             success = (m_MqttClient.publish(
                            message->getTopic(),
                            0,
-                           false,
+                           message->isRetain(),
                            message->getMessage()) > 0);
         }
         HALIB_DEVICE_DEBUG_MSG("postMessageEND (%s)\n", (success) ? "true" : "false");
