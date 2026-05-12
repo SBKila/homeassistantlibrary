@@ -269,6 +269,11 @@ namespace HALIB_NAMESPACE
         mOutboxAction.append(p_pAction);
     }
 
+    void HANode::unshiftAction(HAAction *p_pAction)
+    {
+        mOutboxAction.unshift(p_pAction);
+    }
+
     void HANode::postMessage(const char *pTopic, const char *pMessage, boolean retain)
     {
         postMessage(new HAMessage(pTopic, pMessage, retain));

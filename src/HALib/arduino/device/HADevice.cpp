@@ -175,6 +175,10 @@ namespace HALIB_NAMESPACE
         HALIB_DEVICE_DEBUG_MSG("=> Mqtt connected\n");
         sendAvailability(true);
         m_pNode->onHAConnect(true);
+        if (!sessionPresent && hasBeenConnected)
+        {
+            m_pNode->postAutoDiscovery();
+        }
         hasBeenConnected = true;
     }
 
@@ -256,9 +260,21 @@ namespace HALIB_NAMESPACE
     void HADevice::treatActions()
     {
         int nbAction = m_pNode->actionsSize();
+        if (nbAction == 0) return;
+
+        static unsigned long lastActionFail = 0;
+        // If we failed recently, wait 50ms before retrying the queue
+        if (millis() - lastActionFail < 50) return;
+
         // Process all pending actions
-        while ((0 != nbAction--) && treatAction(m_pNode->pickupAction()))
-            ;
+        while ((0 != nbAction--))
+        {
+            if (!treatAction(m_pNode->pickupAction()))
+            {
+                lastActionFail = millis();
+                break;
+            }
+        }
     }
 
     bool HADevice::treatAction(HAAction *l_pCmd)
@@ -288,14 +304,14 @@ namespace HALIB_NAMESPACE
                 // If action failed, retry unless counter exceeded
                 if (l_pCmd->retry() < 250)
                 {
-                    m_pNode->retryAction(l_pCmd);
+                    m_pNode->unshiftAction(l_pCmd);
                 }
                 else
                 {
                     delete l_pCmd;
                 }
             }
-            success = true;
+            success = done;
         }
 
         HALIB_DEVICE_DEBUG_MSG("treatActionEND (%s)\n", (success) ? "true" : "false");

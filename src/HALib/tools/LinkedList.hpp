@@ -105,6 +105,22 @@ namespace HALIB_NAMESPACE
             return true;
         }
 
+        virtual bool unshift(T _t)
+        {
+            LinkedListNode<T> *tmp = new LinkedListNode<T>();
+            tmp->data = _t;
+            tmp->next = root;
+
+            root = tmp;
+            if (NULL == last)
+            {
+                last = tmp;
+            }
+
+            _size++;
+            return true;
+        }
+
         virtual bool remove(T _t, bool isPointerData = false)
         {
             LinkedListNode<T> *tmp = root;

@@ -69,14 +69,14 @@ namespace HALIB_NAMESPACE
             // Setup HA sensor for cumulative power
             strcpy(buffer, name);
             strcat(buffer, "_cumulat");
-            m_pCumulaticComponent = new HAComponentSensor(buffer, SC_ENERGY, false);
+            m_pCumulaticComponent = new HAComponentSensor(buffer, SC_ENERGY, true);
             m_pCumulaticComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kWh");
             m_pCumulaticComponent->addProperty(PROP_STATE_CLASS, "total_increasing");
 
             // Setup HA sensor for instant power
             strcpy(buffer, name);
             strcat(buffer, "_instant");
-            m_pInstantComponent = new HAComponentSensor(buffer, SC_POWER, false);
+            m_pInstantComponent = new HAComponentSensor(buffer, SC_POWER, true);
             m_pInstantComponent->addProperty(PROP_UNIT_OF_MEASUREMENT, "kW");
             m_pInstantComponent->addProperty(PROP_STATE_CLASS, "measurement");
 

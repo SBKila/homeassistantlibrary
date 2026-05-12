@@ -36,3 +36,9 @@ void loop() {
     // ... logic ... 
 }
 ```
+
+## 5. MQTT Queue and Retries
+- **Message Queueing**: Outgoing MQTT messages are queued in `HANode::mOutboxAction`.
+- **Order Preservation**: If `AsyncMqttClient::publish` returns 0 (usually due to TCP buffer saturation), the failed `HAAction` is re-inserted at the **front** of the queue using `mOutboxAction.unshift(p_pAction)`. This ensures MQTT messages are published in the exact order they were generated.
+- **Backoff**: To prevent spamming a full TCP queue, `HADevice::treatActions` implements a 50ms non-blocking backoff delay after a failed publish attempt.
+- **Discovery Deduplication**: `HADevice::_onMqttConnect` delegates the initial discovery burst to each `HAComponent` via `_onHAConnect()`. Global `postAutoDiscovery` is strictly reserved for reconnections where the MQTT broker has lost the session (`!sessionPresent && hasBeenConnected`).

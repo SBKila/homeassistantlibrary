@@ -75,6 +75,9 @@ namespace HALIB_NAMESPACE
         // Re-queues an action that failed to be processed
         void retryAction(HAAction *p_pAction);
 
+        // Prepend an action to the outbox queue
+        void unshiftAction(HAAction *p_pAction);
+
     private:
 #ifdef UNIT_TEST
     public:
