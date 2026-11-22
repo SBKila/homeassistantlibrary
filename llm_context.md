@@ -37,8 +37,15 @@ void loop() {
 }
 ```
 
-## 5. MQTT Queue and Retries
-- **Message Queueing**: Outgoing MQTT messages are queued in `HANode::mOutboxAction`.
-- **Order Preservation**: If `AsyncMqttClient::publish` returns 0 (usually due to TCP buffer saturation), the failed `HAAction` is re-inserted at the **front** of the queue using `mOutboxAction.unshift(p_pAction)`. This ensures MQTT messages are published in the exact order they were generated.
-- **Backoff**: To prevent spamming a full TCP queue, `HADevice::treatActions` implements a 50ms non-blocking backoff delay after a failed publish attempt.
+## 5. MQTT Queue, Spillover Buffer and Retries
+- **Hybrid Message Queueing (RAM + Flash)**: To prevent Out-Of-Memory (OOM) crashes during large Auto-Discovery bursts, the library uses a Spillover Buffer. The RAM queue (`HANode::mOutboxAction`) is strictly capped at 5 items.
+
+- **Flash Swap (LittleFS)**: If the RAM queue is full, incoming actions are immediately serialized to a Flash file (`/outbox.bin`) using a TLV (Type-Length-Value) pattern with a `0xFF` unread status flag. The file is strictly volatile and is forcibly purged on boot.
+
+- **Peek & Pop Architecture**: `HADevice::treatActions` uses `m_pNode->peekAction()` to read the head of the queue without removing it. If the MQTT publish is successful, `m_pNode->popAction()` is called to safely remove the item and free its memory. If RAM is empty, `peekAction()` transparently loads (`_swapInFromFlash()`) the next batch of 5 messages from Flash and marks them as read (`0x00`).
+
+- **Backoff & Poison Pill Protection**: A failed publish triggers a 50ms non-blocking backoff. Retries are tracked via a static RAM counter. If a specific message fails 250 consecutive times, it is considered a "Poison Pill", dropped from the queue, and its memory is freed to prevent Head-of-line blocking deadlocks.
+
 - **Discovery Deduplication**: `HADevice::_onMqttConnect` delegates the initial discovery burst to each `HAComponent` via `_onHAConnect()`. Global `postAutoDiscovery` is strictly reserved for reconnections where the MQTT broker has lost the session (`!sessionPresent && hasBeenConnected`).
+
+- **Topic Generation**: Topics are generated using `_getHAConfigTopic()`, which appends the component's specific topic (e.g., `state`) to the node's `BaseTopic` (e.g., `homeassistant/sensor/basement_temp/state`).

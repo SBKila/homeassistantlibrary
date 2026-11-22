@@ -3,12 +3,11 @@ title HommeAssistant Message management\nTo HA Server
 
 actor HAServer
 
-
 box "Arduino" #00878F
 participant ArduinoCore
 participant main
 participant WIFI
-participant PubSubClient
+participant AsyncMqttClient
 end box
 
 box "library" #62AEB2
@@ -52,21 +51,26 @@ HADevice->WIFI : status
 alt WIFI connected
     alt MQTT connected
 
-        HADevice->HANode:pickupOutboxMessage
+        HADevice->HANode:peekAction
         activate HANode
-        HADevice<--HANode:
+        HADevice<--HANode: Return HAAction
         deactivate HANode
-        HADevice->PubSubClient:publish
-        activate PubSubClient
-        HAServer\\--PubSubClient:postMessage
+        
+        HADevice->AsyncMqttClient:publish
+        activate AsyncMqttClient
+        HAServer\--AsyncMqttClient:postMessage
         note left : message will be\nreceived by HA Server
-        return
+        return success
+
+        alt success
+            HADevice->HANode:popAction
+            activate HANode
+            return
+        end
 
     end
 end
 
 return
 return
-
-
 @enduml
