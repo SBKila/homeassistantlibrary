@@ -1,26 +1,21 @@
 @startuml General Class Diagram
 
-
 package "Arduino" #00878F {
-
   class HADevice
   HADevice -- HAAdapter
   HAAdapter <|-- HAAdpterPushButton
   HAAdapter <|-- HAAdpterDSS238
   HAAdapter <|-- HAAdpterLed
   class callback
-
 }
 
 package "Homeassistant" #3eb7ed {
-
   interface INode
   class HANode
   HADevice *-- HANode
   INode <|-- HANode
   HANode *-- IHAComponent : mComponents
   HANode - "0..n" HAAction
-
 
   interface IHAComponent
   class HAComponent
@@ -47,7 +42,6 @@ package "Homeassistant" #3eb7ed {
   class HAAction {
     +getType()
     +getTopic()
-    +retry()
   }
   class HAMessage {
     +getMessage()
@@ -59,8 +53,5 @@ package "Homeassistant" #3eb7ed {
   HAAction --> HAActionType : type
   HAAction <|-- HAMessage
   HAAction <|-- HASubscribCmd
-  
-  
 }
-
 @enduml

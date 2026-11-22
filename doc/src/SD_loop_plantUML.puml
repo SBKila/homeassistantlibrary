@@ -5,7 +5,7 @@ box "Arduino" #00878F
 participant ArduinoCore
 participant main
 participant WIFI
-participant PubSubClient
+participant AsyncMqttClient
 end box
 
 box "library" #62AEB2
@@ -30,13 +30,12 @@ return
 alt Wifi Connected
 
   alt MQTT NOT connected
-
     HADevice->HADevice:prepareMQTTInfo
-    HADevice->PubSubClient:connect
+    HADevice->AsyncMqttClient:connect
 
     HADevice->HADevice:sendAvailability
     activate HADevice
-    HADevice->PubSubClient:publish
+    HADevice->AsyncMqttClient:publish
     deactivate HADevice
 
     HADevice->HANode:onHAConnect
@@ -57,7 +56,6 @@ alt Wifi Connected
 
       HAComponent->HAComponent:onHAConnect
       activate HAComponent
-      
       HAComponent->HAComponent:publishState
       note right : following depends\nof component\nimplementation
       activate HAComponent
@@ -77,32 +75,31 @@ alt Wifi Connected
     
     HADevice->HADevice:treatActions
     activate HADevice
-      HADevice->HANode:actionsSize
+      HADevice->HANode:peekAction
       activate HANode
-      return
-      loop actions
-        
-        HADevice->HANode:pickupAction
-        activate HANode
-        HADevice<--HANode:
-        deactivate HANode
+      return HAAction
+      
+      alt Action is valid (not NULL)
         alt
-          HADevice->PubSubClient:subscribe
-          activate PubSubClient
-          return
+          HADevice->AsyncMqttClient:subscribe
+          activate AsyncMqttClient
+          return success/fail
         else
-          HADevice->PubSubClient:unsubscribe
-          activate PubSubClient
-          return
+          HADevice->AsyncMqttClient:unsubscribe
+          activate AsyncMqttClient
+          return success/fail
         else
-          HADevice->PubSubClient:publish
-          activate PubSubClient
-          return
+          HADevice->AsyncMqttClient:publish
+          activate AsyncMqttClient
+          return success/fail
         end
-        alt failed
-          HADevice->HANode:retryAction
+
+        alt success
+          HADevice->HANode:popAction
           activate HANode
           return
+        else failed
+          note right: Fail counter increments.\nAction stays in RAM Queue.\nDrops after 250 attempts.
         end
       end
     deactivate HADevice
@@ -118,8 +115,6 @@ alt for all adapters
   note right : Do Adapter stuff here
   return
 end
-
-
 
 ArduinoCore<--main :
 deactivate main
