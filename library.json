@@ -1,6 +1,6 @@
 {
   "name": "HomeAssistantLibrary",
-  "version": "0.2.21",
+  "version": "0.3.7",
   "description": "Library to manage HomeAssistant MQTT protocol",
   "keywords": "ESP8266,HomeAssistant",
   "repository": {

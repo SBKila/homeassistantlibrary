@@ -314,25 +314,38 @@ void HANode::swapInFromFlash() {
 
   int loadedCount = 0;
   bool hasMoreUnread = false;
+  bool corrupted = false;
 
   while (f.available()) {
     size_t startPos = f.position();
-    uint8_t status;
-    f.read(&status, 1);
-    uint8_t type;
-    f.read(&type, 1);
-    uint16_t topicLen;
-    f.read((uint8_t *)&topicLen, sizeof(topicLen));
+    uint8_t status = 0;
+    uint8_t type = 0;
+    uint16_t topicLen = 0;
+
+    if (f.read(&status, 1) != 1 ||
+        f.read(&type, 1) != 1 ||
+        f.read((uint8_t *)&topicLen, sizeof(topicLen)) != sizeof(topicLen)) {
+      corrupted = true;
+      break;
+    }
+
+    if (type != POSTMESSAGE && type != SUBSCRIPTION) {
+      corrupted = true;
+      break;
+    }
 
     // If already processed, skip to the next record
     if (status == 0x00) {
       f.seek(topicLen, SeekCur);
       if (type == POSTMESSAGE) {
-        uint16_t payloadLen;
-        f.read((uint8_t *)&payloadLen, sizeof(payloadLen));
-        f.seek(payloadLen + 1, SeekCur);
+        uint16_t payloadLen = 0;
+        if (f.read((uint8_t *)&payloadLen, sizeof(payloadLen)) != sizeof(payloadLen)) {
+          corrupted = true;
+          break;
+        }
+        f.seek(payloadLen + 1, SeekCur); // payload + retain flag
       } else if (type == SUBSCRIPTION) {
-        f.seek(1, SeekCur);
+        f.seek(1, SeekCur); // isSub flag
       }
       continue;
     }
@@ -347,28 +360,59 @@ void HANode::swapInFromFlash() {
     char *topic = NULL;
     if (topicLen > 0) {
       topic = (char *)malloc(topicLen + 1);
-      f.read((uint8_t *)topic, topicLen);
+      if (!topic) {
+        corrupted = true;
+        break;
+      }
+      if (f.read((uint8_t *)topic, topicLen) != topicLen) {
+        free(topic);
+        corrupted = true;
+        break;
+      }
       topic[topicLen] = '\0';
     }
 
     // Load Payload and Re-instantiate Object in RAM
     if (type == POSTMESSAGE) {
-      uint16_t payloadLen;
-      f.read((uint8_t *)&payloadLen, sizeof(payloadLen));
+      uint16_t payloadLen = 0;
+      if (f.read((uint8_t *)&payloadLen, sizeof(payloadLen)) != sizeof(payloadLen)) {
+        if (topic) free(topic);
+        corrupted = true;
+        break;
+      }
       char *payload = NULL;
       if (payloadLen > 0) {
         payload = (char *)malloc(payloadLen + 1);
-        f.read((uint8_t *)payload, payloadLen);
+        if (!payload) {
+          if (topic) free(topic);
+          corrupted = true;
+          break;
+        }
+        if (f.read((uint8_t *)payload, payloadLen) != payloadLen) {
+          free(payload);
+          if (topic) free(topic);
+          corrupted = true;
+          break;
+        }
         payload[payloadLen] = '\0';
       }
-      uint8_t retain;
-      f.read(&retain, 1);
+      uint8_t retain = 0;
+      if (f.read(&retain, 1) != 1) {
+        if (payload) free(payload);
+        if (topic) free(topic);
+        corrupted = true;
+        break;
+      }
       mOutboxAction.append(new HAMessage(topic, payload, retain > 0));
       if (payload)
         free(payload);
     } else if (type == SUBSCRIPTION) {
-      uint8_t isSub;
-      f.read(&isSub, 1);
+      uint8_t isSub = 0;
+      if (f.read(&isSub, 1) != 1) {
+        if (topic) free(topic);
+        corrupted = true;
+        break;
+      }
       mOutboxAction.append(new HASubscribCmd(topic, isSub > 0));
     }
 
@@ -387,8 +431,8 @@ void HANode::swapInFromFlash() {
 
   f.close();
 
-  // If file is fully processed, perform garbage collection
-  if (!hasMoreUnread) {
+  // If file is corrupted or fully processed, perform garbage collection
+  if (corrupted || !hasMoreUnread) {
     LittleFS.remove(SWAP_FILE_PATH);
     mSwapFileExists = false;
   }

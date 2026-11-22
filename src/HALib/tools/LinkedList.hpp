@@ -132,13 +132,17 @@ public:
   }
 
   T shift() {
-    T data = NULL;
-    if (NULL != root) {
-      data = root->data;
-      if (NULL != data) {
-        remove(data);
-      }
+    if (NULL == root) {
+      return NULL;
     }
+    LinkedListNode<T> *tmp = root;
+    T data = tmp->data;
+    root = root->next;
+    if (NULL == root) {
+      last = NULL;
+    }
+    _size--;
+    delete tmp;
     return data;
   }
 };

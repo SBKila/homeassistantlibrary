@@ -179,8 +179,8 @@ public:
       m_Persistent.ticks += nbTick;
 
       // If number of ticks is bigger than a tenth of Kw
-      if (m_Persistent.ticks > m_TickByTenthKW) {
-        m_Persistent.cumulative += 0.1;
+      while (m_TickByTenthKW > 0 && m_Persistent.ticks >= m_TickByTenthKW) {
+        m_Persistent.cumulative += 0.1f;
         m_Persistent.ticks -= m_TickByTenthKW;
         m_pCumulaticComponent->setValue(m_Persistent.cumulative);
       }
